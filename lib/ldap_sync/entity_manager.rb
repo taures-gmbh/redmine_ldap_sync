@@ -91,13 +91,15 @@ module LdapSync::EntityManager
         unless setting.has_account_flags?
           changes[:enabled] += find_all_users(ldap, n(:login)).map(&:first)
         else
-          find_all_users(ldap, ns(:login, :account_flags)) do |entry|
+          successful = find_all_users(ldap, ns(:login, :account_flags)) do |entry|
             if account_locked?(entry[n(:account_flags)].first)
               changes[:locked] << entry[n(:login)].first
             else
               changes[:enabled] << entry[n(:login)].first
             end
           end
+
+          raise 'Could not read LDAP users' if successful == false
         end
 
         changes[:enabled].delete(nil)

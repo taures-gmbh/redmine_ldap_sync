@@ -376,7 +376,9 @@ class LdapSetting
     end
 
     def self.settings(source)
-      Setting.plugin_redmine_ldap_sync.fetch(source.id, HashWithIndifferentAccess.new)
+      ActionController::Parameters.new(
+        Setting.plugin_redmine_ldap_sync.fetch(source.id, HashWithIndifferentAccess.new)
+      ).permit!.to_h.with_indifferent_access
     end
 
     def settings

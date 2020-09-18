@@ -40,7 +40,14 @@ module LdapSync::EntityManager
         if f && fields_to_sync.include?(f)
           fields[f] = value.first unless value.nil? || value.first.blank?
         end
+        fields[f] = shorten_names(fields[f])
+
         fields
+      end
+      if user_fields['mail'].nil? or user_fields['mail'].strip!.to_s == ''
+        email = username+'@aiias.edu'
+        puts "   no email so using: " + email
+        user_fields['mail'] = email
       end
 
       user_required_custom_fields.each do |cf|
@@ -50,6 +57,17 @@ module LdapSync::EntityManager
       end
 
       user_fields
+    end
+
+    def shorten_names(name)
+      if not name.nil? and name.length > 30
+        print "   shortening: " + name + " to: "
+        STDOUT.flush
+        name = name.to_s[0..27]+'..'
+        puts name
+      end
+
+      name
     end
 
     def get_group_fields(groupname, group_data = nil)

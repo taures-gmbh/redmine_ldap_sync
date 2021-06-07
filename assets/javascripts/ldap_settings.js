@@ -87,12 +87,32 @@ $(function() {
     );
   });
 
-  $('#commit-test')
-    .bind('ajax:before', function() {
-      var data = $('form[id^="edit_ldap_setting"]').serialize();
-      $(this).data('params', data);
-    })
-    .bind('ajax:success', function(event, data) {
-      $('#test-result').text(data);
+  //$('#commit-test')
+  //  .bind('ajax:before', function() {
+  //    var data = $('form[id^="edit_ldap_setting"]').serialize();
+  //    $(this).data('params', data);
+  //  })
+  //  .bind('ajax:success', function(event, data) {
+  //    $('#test-result').text(data);
+  //  });
+
+  $("#commit-test-submit").on('click', function(event){
+    //cancel submit_tag
+    event.preventDefault();
+
+    var form = $('form[id^="commit-test"]');
+    //console.log(data);
+    //debugger;
+
+    $.ajax({
+      url : form.attr('action'), 
+      type: form.attr('method'),
+      data: form.serialize(),
+      success: function (result) {
+        $('#test-result').text(result);
+      },
+      error: function(){ console.log("ajax failure");  }
+    });
+
     });
 });

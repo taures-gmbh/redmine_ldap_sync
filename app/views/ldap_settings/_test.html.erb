@@ -1,17 +1,12 @@
-<% f = tab[:form] %>
-<%= error_messages_for 'ldap_test' %>
+
 <div class="box tabular settings">
-  <%= labelled_fields_for f.object.test do |t| -%>
-  <p><%= t.label :test_users %><%= t.text_field :test_users %></p>
-  <p><%= t.label :test_groups %><%= t.text_field :test_groups %></p>
+  <%= form_tag({:controller => 'ldap_settings', :action => 'test'}, method: :put, :remote => true, :id => 'commit-test' ) do %>
+  <p><%= label_tag :test_users %><%= text_field_tag 'test_users', '' %></p>
+  <p><%= label_tag :test_groups %><%= text_field_tag 'test_groups', '' %></p>
+  <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit') %></p>
+  <% end %>
 
-  <% if t.object.connect_as_user? -%>
-    <p><%= t.label :bind_user %><%= t.text_field :bind_user %></p>
-    <p><%= t.label :bind_password %><%= t.text_field :bind_password %></p>
-  <% end -%>
 
-  <p><%= link_to l(:button_execute), { :action => 'test', :format => 'text' },
-          :remote => true, :method => 'put', :id => 'commit-test' %></p>
   <div class="autoscroll">
   <fieldset>
     <legend><%=l(:label_result)%></legend>
@@ -19,5 +14,5 @@
       <pre id="test-result"><%=l :label_not_executed %></pre>
   </fieldset>
   </div>
-  <% end -%>
+  
 </div>

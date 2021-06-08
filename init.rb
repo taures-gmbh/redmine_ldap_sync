@@ -6,7 +6,7 @@ Redmine::Plugin.register :redmine_ldap_sync do
   author_url 'https://github.com/aki360p'
   description 'Syncs users and groups with ldap'
   url 'https://github.com/aki360p/redmine_ldap_sync'
-  version '2.3.0dev'
+  version '2.3.0'
   requires_redmine :version_or_higher => '4.0.0'
 
   settings :default => HashWithIndifferentAccess.new()

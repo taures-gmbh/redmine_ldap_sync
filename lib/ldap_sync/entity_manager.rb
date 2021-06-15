@@ -105,6 +105,8 @@ module LdapSync::EntityManager
         changes[:enabled].delete(nil)
         changes[:locked].delete(nil)
 
+        raise 'No enabled LDAP users' unless changes[:enabled].any?
+
         users_on_local = self.users.active.map {|u| u.login.downcase }
         users_on_ldap = changes.values.sum.map(&:downcase)
         deleted_users = users_on_local - users_on_ldap

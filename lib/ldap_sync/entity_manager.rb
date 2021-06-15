@@ -86,6 +86,7 @@ module LdapSync::EntityManager
       return @ldap_users if defined? @ldap_users
 
       with_ldap_connection do |ldap|
+        # FIXME: Ruby 3 has no SortedSet included anymore
         changes = { enabled: SortedSet.new, locked: SortedSet.new, deleted: SortedSet.new }
 
         unless setting.has_account_flags?

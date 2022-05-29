@@ -17,6 +17,9 @@
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
 require 'net/ldap'
 
+class LdapSync::CoreExt::LdapEntry
+end
+
 class Net::LDAP
   class Entry
     include Enumerable

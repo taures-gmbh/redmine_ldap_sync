@@ -103,8 +103,8 @@ module LdapSync::EntityManager
           end
         end
 
-        changes[:enabled].delete(nil)
-        changes[:locked].delete(nil)
+        #changes[:enabled].delete(nil)
+        #changes[:locked].delete(nil)
 
         users_on_local = self.users.active.map {|u| u.login.downcase }
         users_on_ldap = changes.values.sum.map(&:downcase)

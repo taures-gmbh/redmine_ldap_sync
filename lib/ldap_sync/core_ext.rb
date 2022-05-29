@@ -15,4 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
+class LdapSync::CoreExt
+end
+
 Dir[File.dirname(__FILE__) + "/core_ext/*.rb"].each { |file| require(file) }

@@ -1,5 +1,6 @@
-<% f = tab[:form] %>
+
 <%= error_messages_for 'ldap_setting' %>
+<h2>Syncronization Actions</h2>
 <div class="box tabular settings">
   <p><%= f.select :sync_on_login, options_for_sync_on_login %></p>
   <p><%= f.text_field :required_group %></p>

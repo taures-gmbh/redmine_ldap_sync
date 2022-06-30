@@ -79,18 +79,20 @@ class LdapSettingsController < ApplicationController
   def test
     return render 'ldap_setting_invalid' unless @ldap_setting.valid?
 
-    ldap_test = params[:ldap_test]
-    users     = ldap_test.fetch(:test_users, '').split(',')
-    groups    = ldap_test.fetch(:test_groups, '').split(',')
-    [users, groups].each {|l| l.map(&:strip).reject(&:blank?) }
-
+    #ldap_test = params[:ldap_test]
+    #users     = ldap_test.fetch(:test_users, '').split(',')
+    #groups    = ldap_test.fetch(:test_groups, '').split(',')
+    #[users, groups].each {|l| l.map(&:strip).reject(&:blank?) }
+    users = params[:test_users].split(',')
+    groups = params[:test_groups].split(',')
 
     @test = LdapTest.new(@ldap_setting)
-    @test.bind_user = ldap_test[:bind_user]
-    @test.bind_password = ldap_test[:bind_password]
+    #@test.bind_user = ldap_test[:bind_user]
+    #@test.bind_password = ldap_test[:bind_password]
 
     if @test.valid?
       @test.run_with_users_and_groups(users, groups)
+      puts @test.inspect
     else
       render 'ldap_test_invalid'
     end

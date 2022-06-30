@@ -6,10 +6,16 @@
 
 <%= labelled_form_for @ldap_setting, :html => {:class => 'tabular'} do |f| -%>
 
-  <%= render_tabs ldap_setting_tabs(f) %>
-
-  <%= submit_tag l(:button_save), :id => 'commit-save' %>
+  <%= render :partial => "ldap_settings", locals: {f: f} %>
+  <%= render :partial => "synchronization_actions", locals: {f: f}  %>
+  <%= submit_tag l(:button_save), :id => 'commit-save' %><br/>
 <% end -%>
+
+  <br/>
+  <%= render :partial => "test" %>
+
+  
+
 
 <% html_title(l(:label_ldap_synchronization)) -%>
 

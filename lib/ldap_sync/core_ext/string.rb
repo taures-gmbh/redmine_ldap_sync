@@ -17,6 +17,9 @@
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
 require 'net/ldap'
 
+class LdapSync::CoreExt::String
+end
+
 module Net::BER::Extensions::String
   if Gem.loaded_specs['net-ldap'].version < Gem::Version.new('0.12.0')
     def raw_utf8_encoded

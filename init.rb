@@ -16,9 +16,11 @@ end
 
 #RedmineApp::Application.config.after_initialize do
 Rails.application.config.to_prepare do
-  require_dependency 'ldap_sync/core_ext'
-  require_dependency 'ldap_sync/infectors'
+  require "#{File.dirname(__FILE__)}/lib/ldap_sync/core_ext"
+  require "#{File.dirname(__FILE__)}/lib/ldap_sync/infectors"
 end
 
 # hooks
-require_dependency 'ldap_sync/hooks'
+require "#{File.dirname(__FILE__)}/lib/ldap_sync/hooks"
+
+require "#{File.dirname(__FILE__)}/lib/ldap_sync/infectors"

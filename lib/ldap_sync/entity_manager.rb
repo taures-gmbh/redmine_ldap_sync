@@ -57,7 +57,7 @@ module LdapSync::EntityManager
         find_group(ldap, groupname, [n(:groupname), *setting.group_ldap_attrs_to_sync])
       end || {}
 
-      group_fields = group_data.inject({}) do |fields, (attr, value)|
+      group_fields = group_data.to_h.inject({}) do |fields, (attr, value)|
         f = setting.group_field(attr)
         if f && setting.group_fields_to_sync.include?(f)
           fields[f] = value.first unless value.nil? || value.first.blank?

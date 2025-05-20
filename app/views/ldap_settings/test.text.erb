@@ -37,14 +37,22 @@
 
 <% end -%>
 <% if @test.user_attrs.present? -%>
-<%=l :label_ldap_attributes_on_a_user %>:
-    <%= @test.user_attrs.map {|(k, v)| k }.inspect %>
-
+  <%=l :label_ldap_attributes_on_a_user %>:
+  <% if @test.user_attrs.respond_to?(:attribute_names) -%>
+    <%= @test.user_attrs.attribute_names.inspect %>
+  <% else -%>
+    <%= @test.user_attrs.map {|(k, v)| k }.inspect rescue @test.user_attrs.inspect %>
+  <% end -%>
 <% end -%>
+
 <% if @test.group_attrs.present? -%>
-<%=l :label_ldap_attributes_on_a_group %>:
-    <%= @test.group_attrs.map {|(k, v)| k }.inspect %>
-
+  <%=l :label_ldap_attributes_on_a_group %>:
+  <% if @test.group_attrs.respond_to?(:attribute_names) -%>
+    <%= @test.group_attrs.attribute_names.inspect %>
+  <% else -%>
+    <%= @test.group_attrs.map {|(k, v)| k }.inspect rescue @test.group_attrs.inspect %>
+  <% end -%>
 <% end -%>
+
 <%=l :label_log_messages %>:
 <%= @test.messages %>

@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
+
 module LdapSync::DryRun::Group
 
   module InstanceMethods
@@ -23,7 +24,7 @@ module LdapSync::DryRun::Group
       return group if group.present?
 
       group = ::Group.new(attributes.merge(:lastname => lastname))
-      puts "   !! New group '#{lastname}'" if (group.valid?)
+      puts "   !! New group '#{lastname}'" if group.valid?
 
       group
     end
@@ -32,8 +33,8 @@ module LdapSync::DryRun::Group
   def self.included(receiver)
     receiver.send(:include, InstanceMethods)
 
-    receiver.instance_eval do
-      has_and_belongs_to_many :users do
+    unless receiver.reflect_on_association(:users)
+      receiver.has_and_belongs_to_many :users do
         def <<(users)
           puts "   !! Added to group '#{proxy_association.owner.lastname}'"
         end

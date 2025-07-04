@@ -465,7 +465,9 @@ module LdapSync::Infectors::AuthSourceLdap
       cattr_accessor :trace_level do
         :debug
       end
-      unloadable
+      if Rails::VERSION::MAJOR < 7
+		unloadable
+  	  end
     end
   end
 end

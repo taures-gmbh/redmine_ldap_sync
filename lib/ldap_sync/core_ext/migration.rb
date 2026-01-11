@@ -15,15 +15,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
-class LdapSync::CoreExt::Migration
-end
+module LdapSync
+  class CoreExt
+    class Migration
+      class ActiveRecord::Migration
+          unless defined? self.[]
 
-class ActiveRecord::Migration
-    unless defined? self.[]
-        
-        # Enables the use of versioned migrations on rails < 5
-        def self.[](version)
-            self
-        end
+              # Enables the use of versioned migrations on rails < 5
+              def self.[](version)
+                  self
+              end
+          end
+      end
     end
+  end
 end

@@ -35,7 +35,7 @@ module LdapSync::EntityManager
       end
       return {} if user_data.nil?
 
-      user_fields = user_data.inject({}) do |fields, (attr, value)|
+      user_fields = user_data.to_h.inject({}) do |fields, (attr, value)|
         f = setting.user_field(attr)
         if f && fields_to_sync.include?(f)
           fields[f] = value.first unless value.nil? || value.first.blank?
@@ -99,14 +99,10 @@ module LdapSync::EntityManager
               changes[:enabled] << entry[n(:login)].first
             end
           end
-
-          raise 'Could not read LDAP users' if all_users == false
         end
 
-        #changes[:enabled].delete(nil)
-        #changes[:locked].delete(nil)
-
-        raise 'No enabled LDAP users' unless changes[:enabled].any?
+        changes[:enabled].delete("")
+        changes[:locked].delete("")
 
         users_on_local = self.users.active.map {|u| u.login.downcase }
         users_on_ldap = changes.values.sum.map(&:downcase)

@@ -15,15 +15,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
-class LdapSync::CoreExt::FileStore
-end
-
-class ActiveSupport::Cache::FileStore
-  def delete_unless
-    options = merged_options(options)
-    search_dir(cache_path) do |path|
-      key = file_path_key(path)
-      delete_entry(key, options) unless yield(key)
+module LdapSync
+  class CoreExt
+    class FileStore
+      class ActiveSupport::Cache::FileStore
+        def delete_unless
+          options = merged_options(options)
+          search_dir(cache_path) do |path|
+            key = file_path_key(path)
+            delete_entry(key, options) unless yield(key)
+          end
+        end
+      end
     end
   end
 end

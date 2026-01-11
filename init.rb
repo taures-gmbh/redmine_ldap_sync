@@ -3,10 +3,10 @@ require 'redmine'
 Redmine::Plugin.register :redmine_ldap_sync do
   name 'Redmine LDAP Sync'
   author 'Akinori Iwasaki, Christoffer Rumohr, Ricardo Santos, Taine Woo, Tilman Klaeger'
-  author_url 'https://github.com/DevOps-TauRes'
+  author_url 'https://github.com/taures-gmbh'
   description 'Syncs users and groups with ldap'
-  url 'https://github.com/DevOps-TauRes/redmine_ldap_sync.git'
-  version '2.3.1'
+  url 'https://github.com/taures-gmbh/redmine_ldap_sync.git'
+  version '2.4.0'
   requires_redmine :version_or_higher => '5.0.0'
 
   settings :default => HashWithIndifferentAccess.new()

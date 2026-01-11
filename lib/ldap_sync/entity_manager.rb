@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
+require 'set'
 module LdapSync::EntityManager
 
   public
@@ -57,7 +58,7 @@ module LdapSync::EntityManager
         find_group(ldap, groupname, [n(:groupname), *setting.group_ldap_attrs_to_sync])
       end || {}
 
-      group_fields = group_data.inject({}) do |fields, (attr, value)|
+      group_fields = group_data.to_h.inject({}) do |fields, (attr, value)|
         f = setting.group_field(attr)
         if f && setting.group_fields_to_sync.include?(f)
           fields[f] = value.first unless value.nil? || value.first.blank?
@@ -86,17 +87,17 @@ module LdapSync::EntityManager
       return @ldap_users if defined? @ldap_users
 
       with_ldap_connection do |ldap|
-        changes = { enabled: SortedSet.new, locked: SortedSet.new, deleted: SortedSet.new }
+        changes = { enabled: Set.new, locked: Set.new, deleted: Set.new }
 
         unless setting.has_account_flags?
-          changes[:enabled] += find_all_users(ldap, n(:login)).map(&:first)
+          changes[:enabled].merge(find_all_users(ldap, n(:login)).map(&:first))
         else
           all_users = find_all_users(ldap, ns(:login, :account_flags))
           all_users.each_with_index do |entry|
             if account_locked?(entry[n(:account_flags)].first)
-              changes[:locked] << entry[n(:login)].first
+              changes[:locked] .add(entry[n(:login)].first)
             else
-              changes[:enabled] << entry[n(:login)].first
+              changes[:enabled] .add(entry[n(:login)].first)
             end
           end
         end
@@ -105,7 +106,7 @@ module LdapSync::EntityManager
         changes[:locked].delete("")
 
         users_on_local = self.users.active.map {|u| u.login.downcase }
-        users_on_ldap = changes.values.sum.map(&:downcase)
+        users_on_ldap = changes.values.reduce(Set.new) { |acc, s| acc | s }.map(&:downcase)
         deleted_users = users_on_local - users_on_ldap
         changes[:deleted] = deleted_users
 
@@ -115,9 +116,9 @@ module LdapSync::EntityManager
 
         # Sort users, clearer for the rake task
         # TODO user Array instead of Set at the beginning ?
-        changes[:enabled] = changes[:enabled].to_a.sort
-        changes[:locked] = changes[:locked].to_a.sort
-        changes[:deleted] = changes[:deleted].to_a.sort
+        changes[:enabled] = changes[:enabled].to_a.compact.sort
+        changes[:locked] = changes[:locked].to_a.compact.sort
+        changes[:deleted] = changes[:deleted].to_a.compact.sort
 
         @ldap_users = changes
       end
@@ -126,7 +127,7 @@ module LdapSync::EntityManager
 
     def groups_changes(user)
       return unless setting.active?
-      changes = { added: SortedSet.new, deleted: SortedSet.new }
+      changes = { added: Set.new, deleted: Set.new }
 
       user_groups = user.groups.map {|g| g.name.downcase }
       groupname_regexp = setting.groupname_regexp
@@ -136,10 +137,12 @@ module LdapSync::EntityManager
         filtered_groups = user_groups.select {|g| groupname_regexp =~ g }
         names_filter    = filtered_groups.map {|g| Net::LDAP::Filter.eq( setting.groupname, g )}.reduce(:|)
         find_all_groups(ldap, names_filter, n(:groupname)) do |group|
-          changes[:deleted] << group.first
+          changes[:deleted] .add(group.first)
         end if names_filter
 
-        changes[:added] += get_primary_group(ldap, user) if setting.has_primary_group?
+        if setting.has_primary_group?
+      changes[:added].merge(get_primary_group(ldap, user))
+    end
 
         case setting.group_membership
         when 'on_groups'
@@ -155,7 +158,7 @@ module LdapSync::EntityManager
             # Find the static groups to which the user belongs to (groupOfNames)
             member_filter = Net::LDAP::Filter.eq( setting.member, memberid )
             find_all_groups(ldap, member_filter, n(:groupname)) do |group|
-              changes[:added] << group.first
+              changes[:added] .add(group.first)
             end if memberid
           end
 
@@ -167,7 +170,7 @@ module LdapSync::EntityManager
 
             names_filter = groups.map{|g| Net::LDAP::Filter.eq( setting.groupid, g )}.reduce(:|)
             find_all_groups(ldap, names_filter, n(:groupname)) do |group|
-              changes[:added] << group.first
+              changes[:added] .add(group.first)
             end if names_filter
           end
         end
@@ -181,7 +184,9 @@ module LdapSync::EntityManager
         # Find the dynamic groups to which the user belongs to (groupOfURLs)
         if setting.sync_dyngroups?
           user_dn ||= find_user(ldap, user.login, :dn).try(:first)
-          changes[:added] += get_dynamic_groups(user_dn) unless user_dn.nil?
+          unless user_dn.nil?
+        changes[:added].merge(get_dynamic_groups(user_dn))
+      end
         end
       end
 

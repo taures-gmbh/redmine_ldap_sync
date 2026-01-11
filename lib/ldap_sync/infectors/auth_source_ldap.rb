@@ -356,7 +356,7 @@ module LdapSync::Infectors::AuthSourceLdap
         mem_cache = @closure_cache
 
         # Match all the entries we want to delete
-        disk_cache.delete_unless {|k| mem_cache.has_key?(k) }
+        delete_unless_from_cache(disk_cache) {|k| mem_cache.has_key?(k) }
         mem_cache.each {|k, v| disk_cache.write(k, v) }
       end
 
@@ -374,10 +374,31 @@ module LdapSync::Infectors::AuthSourceLdap
         end
         dyngroups_cache.write(:cache_control, true, opts)
 
-        dyngroups_cache.delete_unless {|k| k == 'cache_control' || mem_cache.has_key?(k) }
+        delete_unless_from_cache(dyngroups_cache) {|k| k == 'cache_control' || mem_cache.has_key?(k) }
         mem_cache.each {|k, v| dyngroups_cache.write(k, v) }
 
         self.dyngroups_updated = true
+      end
+
+      def delete_unless_from_cache(cache, &block)
+        return unless cache.is_a?(ActiveSupport::Cache::FileStore)
+
+        cache_path = cache.instance_variable_get(:@cache_path)
+        # Ensure cache_path is a string
+        cache_path = cache_path.to_s
+
+        # Check if the directory exists
+        return unless File.exist?(cache_path) && File.directory?(cache_path)
+
+        # List all files in the cache directory
+        Dir.entries(cache_path).each do |filename|
+          next if filename == '.' || filename == '..'
+
+          if filename.end_with?('.cache')
+            key = filename.chomp('.cache')
+            cache.delete(key) unless block.call(key)
+          end
+        end
       end
 
       def setting
@@ -466,8 +487,8 @@ module LdapSync::Infectors::AuthSourceLdap
         :debug
       end
       if Rails::VERSION::MAJOR < 7
-		unloadable
-  	  end
+        unloadable
+      end
     end
   end
 end

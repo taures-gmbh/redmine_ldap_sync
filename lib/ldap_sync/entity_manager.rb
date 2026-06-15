@@ -329,12 +329,6 @@ module LdapSync::EntityManager
     def ldap_search(ldap, options, &block)
       attrs = options[:attributes]
 
-      if attrs.is_a?(Array)
-         arr = ldap.search(options)
-      return arr
-      end
-
-
       return ldap.search(options, &block) if attrs.is_a?(Array) || attrs.nil?
 
       options[:attributes] = [attrs]

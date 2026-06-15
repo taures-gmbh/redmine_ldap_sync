@@ -44,7 +44,7 @@ module LdapSync::Infectors::AuthSourceLdap
         trace "** Synchronizing dynamic groups"
         find_all_dyngroups(ldap,
           :attrs => [:cn, :member, *setting.group_ldap_attrs_to_sync],
-          :update_cache => !dyngroups_fresh?).each do |entry|
+          :update_cache => !dyngroups_fresh?) do |entry|
           create_and_sync_group(entry, :cn)
         end
       end

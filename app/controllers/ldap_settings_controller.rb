@@ -83,8 +83,8 @@ class LdapSettingsController < ApplicationController
     #users     = ldap_test.fetch(:test_users, '').split(',')
     #groups    = ldap_test.fetch(:test_groups, '').split(',')
     #[users, groups].each {|l| l.map(&:strip).reject(&:blank?) }
-    users = params[:test_users].split(',')
-    groups = params[:test_groups].split(',')
+    users = params[:test_users].to_s.split(',').map(&:strip).reject(&:blank?)
+    groups = params[:test_groups].to_s.split(',').map(&:strip).reject(&:blank?)
 
     @test = LdapTest.new(@ldap_setting)
     #@test.bind_user = ldap_test[:bind_user]

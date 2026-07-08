@@ -105,6 +105,7 @@ en:
   text_fixed_group_info: "Optional; every synchronized user is added to this Redmine group (must not exist on LDAP)"
   text_test_info: "Dry run: connects to the LDAP server and shows which users and groups would be synchronized. Nothing is saved."
   text_test_placeholder: "comma-separated, e.g. jsmith, agreen"
+  text_test_request_failed: "The test request failed. Please check the application logs."
 
   field_base_settings: "Base settings"
   option_custom: "Customized"

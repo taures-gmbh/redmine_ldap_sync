@@ -101,17 +101,29 @@ $(function() {
     event.preventDefault();
 
     var form = $('form[id^="commit-test"]');
-    //console.log(data);
-    //debugger;
+    var result = $('#test-result');
 
     $.ajax({
-      url : form.attr('action'), 
+      url : form.attr('action'),
       type: form.attr('method'),
       data: form.serialize(),
-      success: function (result) {
-        $('#test-result').text(result);
+      // keep Redmine's global ajax indicator out of it; the result box
+      // carries its own loading state, right where the user is looking
+      global: false,
+      beforeSend: function() {
+        $('#commit-test-submit').prop('disabled', true);
+        result.text(result.data('loading') || 'Loading...');
+        result[0].scrollIntoView({behavior: 'smooth', block: 'nearest'});
       },
-      error: function(){ console.log("ajax failure");  }
+      complete: function() {
+        $('#commit-test-submit').prop('disabled', false);
+      },
+      success: function (data) {
+        result.text(data);
+      },
+      error: function(){
+        result.text(result.data('error') || 'The test request failed.');
+      }
     });
 
     });

@@ -105,6 +105,7 @@ de:
   text_fixed_group_info: "Optional; jeder synchronisierte Benutzer wird dieser Redmine-Gruppe hinzugefügt (darf nicht im LDAP existieren)"
   text_test_info: "Simulation: verbindet sich mit dem LDAP-Server und zeigt, welche Benutzer und Gruppen synchronisiert würden. Es wird nichts gespeichert."
   text_test_placeholder: "kommagetrennt, z. B. mmustermann, jschmidt"
+  text_test_request_failed: "Die Testanfrage ist fehlgeschlagen. Bitte prüfen Sie die Anwendungs-Logs."
 
   field_base_settings: "Grundeinstellungen"
   option_custom: "Angepasst"

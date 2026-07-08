@@ -13,7 +13,7 @@
   <fieldset>
     <legend><%=l(:label_result)%></legend>
 
-      <pre id="test-result"><%=l :label_not_executed %></pre>
+      <pre id="test-result" data-loading="<%= l(:label_loading) %>" data-error="<%= l(:text_test_request_failed) %>"><%=l :label_not_executed %></pre>
   </fieldset>
   </div>
   

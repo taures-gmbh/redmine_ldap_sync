@@ -115,7 +115,7 @@ module LdapSettingsHelper
 
   def options_for_base_settings
     options = [[l(:option_custom), '']]
-    options += base_settings.collect {|k, h| [h['name'], k] }.sort
+    options += base_settings.collect {|k, h| [l(:"base_settings_#{k}", :default => h['name']), k] }.sort
     options_for_select(options, current_base)
   end
 

@@ -1,6 +1,5 @@
 
-<%= error_messages_for 'ldap_setting' %>
-<h2>Syncronization Actions</h2>
+<h2><%= l(:label_synchronization_actions) %></h2>
 <div class="box tabular settings">
   <p><%= f.select :sync_on_login, options_for_sync_on_login %></p>
   <p><%= f.text_field :required_group %></p>
@@ -11,8 +10,8 @@
   <p><%= f.select :dyngroups, options_for_dyngroups %>
     <span id="dyngroups-cache-ttl"><%= f.text_field :dyngroups_cache_ttl, :required => true, :size => 5 %> <%= l(:label_minutes) %></span>
   </p>
-  <div class="paragraph">
-    <label><%= l(:field_user_group_fields) %></label>
+  <fieldset class="box">
+    <legend><%= l(:field_user_group_fields) %></legend>
     <div class="autoscroll">
     <table class="list fields-user-group">
     <thead>
@@ -61,5 +60,5 @@
     </tbody>
     </table>
     </div>
-  </div>
+  </fieldset>
 </div>

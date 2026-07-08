@@ -1,6 +1,6 @@
 
 <%= error_messages_for 'ldap_setting' %>
-<h2>Ldap Details</h2>
+<h2><%= l(:label_ldap_settings) %></h2>
 <div class="box tabular settings">
   <p><%= label_tag :base_settings, l(:field_base_settings) %>
     <%=  select_tag :base_settings, options_for_base_settings %></p>

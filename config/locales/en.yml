@@ -99,6 +99,14 @@ en:
   field_base_settings: "Base settings"
   option_custom: "Customized"
 
+  base_settings_active_directory: "Active Directory"
+  base_settings_active_directory_nested: "Active Directory (with nested groups)"
+  base_settings_open_ds: "OpenDS"
+  base_settings_lotus_notes_ldap: "Lotus Notes LDAP"
+  base_settings_open_ldap_posix_groups: "Open LDAP (with posixGroups)"
+  base_settings_samba_ldap: "Samba LDAP"
+  base_settings_novell_edirectory_nn: "Novell eDirectory (not nested)"
+
   error_cannot_enable_with_invalid_settings: "Cannot enable synchronization with invalid settings. Please revise the configuration."
 
   errors:

@@ -1,7 +1,20 @@
 <% @test.users_at_ldap.each do |(login, data)| -%>
-<%= "#{l(:label_user)} \"#{login}\"" %>: <%= data == :not_found ?
-    "#{l(:label_not_found)}\n" :
-    "\n#{user_fields_list data[:fields], data[:groups]}" %>
+<% if data == :not_found -%>
+<%= "#{l(:label_user)} \"#{login}\"" %>: <%= l(:label_not_found) %>
+<% else -%>
+<%= "#{l(:label_user)} \"#{login}\"" %>:
+<%= user_fields_list data[:fields], data[:groups] -%>
+<% if @ldap_setting.has_account_flags? -%>
+    <%= @ldap_setting.account_locked_proc ?
+        l(:text_account_flags_eval, :flags => data[:flags].inspect,
+          :locked => data[:locked] ? l(:general_text_yes) : l(:general_text_no)) :
+        l(:text_account_flags_value, :flags => data[:flags].inspect) %>
+<% end -%>
+    <%= l(:label_raw_ldap_attributes) %>:
+<% data[:raw].each do |attr, values| -%>
+        <%= attr %> = <%= values.join(', ') %>
+<% end -%>
+<% end -%>
 <% end -%>
 <% @test.groups_at_ldap.each do |(name, data)| -%>
 <%= "#{l(:label_group)} \"#{name}\"" %>: <%= data == :not_found ?

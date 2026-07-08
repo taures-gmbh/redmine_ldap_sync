@@ -92,7 +92,6 @@ class LdapSettingsController < ApplicationController
 
     if @test.valid?
       @test.run_with_users_and_groups(users, groups)
-      puts @test.inspect
     else
       render 'ldap_test_invalid'
     end

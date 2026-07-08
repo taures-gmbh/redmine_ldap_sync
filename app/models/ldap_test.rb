@@ -54,9 +54,13 @@ class LdapTest
         user_data = find_user(ldap, login, nil)
         if user_data
           @user_attrs ||= user_data
+          flags = setting.has_account_flags? ? user_data[n(:account_flags)].first : nil
           users_at_ldap[login] = {
             :fields => get_user_fields(login, user_data, :include_required => true),
-            :groups => groups_changes(User.new {|u| u.login = login })
+            :groups => groups_changes(User.new {|u| u.login = login }),
+            :raw => raw_attributes(user_data),
+            :flags => flags,
+            :locked => (account_locked?(flags) if setting.has_account_flags?)
           }
         else
           users_at_ldap[login] = :not_found
@@ -110,7 +114,30 @@ class LdapTest
 
   def persisted?; true; end
 
+  REDACTED_ATTRIBUTES = %w(userpassword unicodepwd sambantpassword sambalmpassword krbprincipalkey ipanthash).freeze
+
   private
+    # The raw LDAP entry as a printable {attribute => [values]} hash, so the
+    # test output shows the admin the actual data the mappings and the
+    # locked-account expression operate on. Password-ish attributes are
+    # redacted, binary values summarized, long values truncated.
+    def raw_attributes(entry)
+      entry.attribute_names.sort.each_with_object({}) do |attr, hash|
+        hash[attr.to_s] =
+          if REDACTED_ATTRIBUTES.include?(attr.to_s.downcase)
+            ['[FILTERED]']
+          else
+            Array(entry[attr]).map {|value| printable_value(value) }
+          end
+      end
+    end
+
+    def printable_value(value)
+      str = value.to_s.dup.force_encoding('UTF-8')
+      return "<binary, #{value.to_s.bytesize} bytes>" if !str.valid_encoding? || str =~ /[\x00-\x08\x0B\x0C\x0E-\x1F]/
+      str.length > 120 ? "#{str[0, 117]}..." : str
+    end
+
     def update_dyngroups_cache!(mem_cache)
       @dynamic_groups = Hash.new{|h,k| h[k] = Set.new}
       mem_cache.each do |(login, groups)|

@@ -96,6 +96,16 @@ en:
 
   text_ldap_setting_successfully_updated: "Ldap configuration successfully updated."
 
+  text_groups_base_dn_info: "e.g. ou=groups,dc=example,dc=com"
+  text_groupname_pattern_info: "Regular expression; only groups whose name matches will be synchronized, e.g. ^(Team|Dept)"
+  text_group_search_filter_info: "LDAP search filter, e.g. (objectClass=group)"
+  text_account_locked_test_info: "Ruby expression over the account flags, e.g. flags.to_i & 2 != 0"
+  text_required_group_info: "Optional; only members of this group get access to Redmine"
+  text_admin_group_info: "Optional; members of this group become Redmine administrators"
+  text_fixed_group_info: "Optional; every synchronized user is added to this Redmine group (must not exist on LDAP)"
+  text_test_info: "Dry run: connects to the LDAP server and shows which users and groups would be synchronized. Nothing is saved."
+  text_test_placeholder: "comma-separated, e.g. jsmith, agreen"
+
   field_base_settings: "Base settings"
   option_custom: "Customized"
 

@@ -1,9 +1,10 @@
 
 <h2><%= l(:label_test) %></h2>
 <div class="box tabular settings">
-  <%= form_tag({:controller => 'ldap_settings', :action => 'test'}, method: :put, :remote => true, :id => 'commit-test' ) do %>
-  <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40 %></p>
-  <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40 %></p>
+  <em class="info"><%= l(:text_test_info) %></em>
+  <%= form_tag({:controller => 'ldap_settings', :action => 'test'}, method: :put, :remote => true, :id => 'commit-test', :class => 'tabular' ) do %>
+  <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
+  <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
   <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit') %></p>
   <% end %>
 

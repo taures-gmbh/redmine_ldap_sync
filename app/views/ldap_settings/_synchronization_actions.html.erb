@@ -2,9 +2,12 @@
 <h2><%= l(:label_synchronization_actions) %></h2>
 <div class="box tabular settings">
   <p><%= f.select :sync_on_login, options_for_sync_on_login %></p>
-  <p><%= f.text_field :required_group %></p>
-  <p><%= f.text_field :admin_group %></p>
-  <p><%= f.text_field :fixed_group, :size => 15  %></p>
+  <p><%= f.text_field :required_group %>
+    <em class="info"><%= l(:text_required_group_info) %></em></p>
+  <p><%= f.text_field :admin_group %>
+    <em class="info"><%= l(:text_admin_group_info) %></em></p>
+  <p><%= f.text_field :fixed_group, :size => 15  %>
+    <em class="info"><%= l(:text_fixed_group_info) %></em></p>
   <p><%= f.check_box :create_users %></p>
   <p><%= f.check_box :create_groups %></p>
   <p><%= f.select :dyngroups, options_for_dyngroups %>
@@ -17,7 +20,7 @@
     <thead>
       <tr>
         <th width="20%" align="left"></th>
-        <th width="10%" align="center">
+        <th width="15%" align="center" style="white-space:nowrap">
           <%= link_to_function(image_tag('toggle_check.png'), "toggleCheckboxesBySelector('table.fields-user-group input.sync')",
                                                               :title => "#{l(:button_check_all)}/#{l(:button_uncheck_all)}") %>
           <%= l(:label_synchronize) %>
@@ -35,7 +38,7 @@
       <% if fields.any? -%>
         <tr class="group open">
           <td colspan="4">
-            <span class="expander" onClick="toggleRowGroup(this);">&nbsp;</span>
+            <span class="expander icon icon-expanded" onclick="toggleRowGroup(this);"><%= respond_to?(:sprite_icon) ? sprite_icon('angle-down') : '&nbsp;'.html_safe %></span>
             <%= l("label_#{k}") %>
           </td>
         </tr>

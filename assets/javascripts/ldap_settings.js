@@ -96,35 +96,87 @@ $(function() {
   //    $('#test-result').text(data);
   //  });
 
-  $("#commit-test-submit").on('click', function(event){
-    //cancel submit_tag
-    event.preventDefault();
-
+  var runLdapTest = function(testCase) {
     var form = $('form[id^="commit-test"]');
     var result = $('#test-result');
+    var buttons = $('.commit-test-button');
+    // form.serialize() never includes buttons — append the clicked button's
+    // test case explicitly ("Ausführen" carries none = specific entities)
+    var data = form.serialize();
+    if (testCase) data += '&test_case=' + encodeURIComponent(testCase);
 
     $.ajax({
       url : form.attr('action'),
       type: form.attr('method'),
-      data: form.serialize(),
+      data: data,
       // keep Redmine's global ajax indicator out of it; the result box
       // carries its own loading state, right where the user is looking
       global: false,
       beforeSend: function() {
-        $('#commit-test-submit').prop('disabled', true);
+        buttons.prop('disabled', true);
         result.text(result.data('loading') || 'Loading...');
         result[0].scrollIntoView({behavior: 'smooth', block: 'nearest'});
       },
       complete: function() {
-        $('#commit-test-submit').prop('disabled', false);
+        buttons.prop('disabled', false);
       },
       success: function (data) {
-        result.text(data);
+        // server renders an escaped HTML partial for every test case
+        result.html(data);
       },
       error: function(){
         result.text(result.data('error') || 'The test request failed.');
       }
     });
+  };
 
+  $(".commit-test-button").on('click', function(event){
+    //cancel submit_tag
+    event.preventDefault();
+    runLdapTest($(this).data('test-case'));
+  });
+
+  // drill-down: a name in an all-users/all-groups listing runs the
+  // single-entity test for it, as if typed into the field + Ausführen
+  $('#test-result').on('click', 'a.ldap-test-entity', function(event){
+    event.preventDefault();
+    var name = $(this).data('name');
+    if ($(this).data('type') === 'user') {
+      $('#test_users').val(name);
+      $('#test_groups').val('');
+    } else {
+      $('#test_groups').val(name);
+      $('#test_users').val('');
+    }
+    runLdapTest();
+  });
+
+  // apply: run the real sync (single user, or all changed members of a
+  // group), then show the re-tested (new) state
+  $('#test-result').on('click', 'button.ldap-apply-button', function(event){
+    event.preventDefault();
+    var btn = $(this);
+    if (!window.confirm(btn.data('confirm'))) return;
+
+    var payload = {};
+    if (btn.data('login')) payload.login = btn.data('login');
+    if (btn.data('group')) payload.group = btn.data('group');
+
+    var result = $('#test-result');
+    $.ajax({
+      url: btn.data('url'),
+      type: 'PUT',
+      data: payload,
+      global: false,
+      beforeSend: function() {
+        result.text(result.data('loading') || 'Loading...');
+      },
+      success: function (data) {
+        result.html(data);
+      },
+      error: function(){
+        result.text(result.data('error') || 'The test request failed.');
+      }
     });
+  });
 });

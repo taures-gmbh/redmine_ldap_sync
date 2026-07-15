@@ -1,0 +1,6 @@
+<p><%= l(:error_ldap_setting_invalid) %></p>
+<ul>
+  <% @ldap_setting.errors.full_messages.each do |msg| %>
+  <li><%= msg %></li>
+  <% end %>
+</ul>

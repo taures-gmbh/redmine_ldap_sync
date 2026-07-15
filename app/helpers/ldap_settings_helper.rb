@@ -119,12 +119,89 @@ module LdapSettingsHelper
     options_for_select(options, current_base)
   end
 
-  def user_fields_list(fields, group_changes)
-    text = fields.map do |(k, v)|
-      "    #{user_field_name k} = #{v}\n"
-    end.join
-    groups = group_changes[:added].to_a.inspect
-    text << "    #{l(:label_group_plural)} = #{groups}\n"
+  # Entity names in listings link to the single-entity test (the JS fills the
+  # test field and re-runs).
+  def test_entity_links(names, type)
+    safe_join(names.map {|name|
+      link_to name, '#', :class => 'ldap-test-entity', :data => { :type => type, :name => name }
+    }, ', ')
+  end
+
+  # One badge language for every test mode: green = in sync, yellow = the
+  # sync would change something, red = blocked (pattern/config), grey = the
+  # sync leaves it alone.
+  def verdict_badge(text, tone)
+    content_tag(:span, text, :class => "ldap-verdict ldap-verdict-#{tone}")
+  end
+
+  USER_VERDICT_TONES = {
+    :in_sync => 'ok',
+    :would_create => 'warn', :would_update => 'warn', :would_activate => 'warn',
+    :would_lock_flags => 'warn', :would_lock_required_group => 'warn',
+    :stays_locked => 'muted', :locked_not_created => 'muted', :skipped_other_auth => 'muted',
+    :not_created => 'fail'
+  }.freeze
+
+  def user_verdict_badge(verdict)
+    verdict_badge(l(:"text_verdict_#{verdict}"), USER_VERDICT_TONES[verdict] || 'muted')
+  end
+
+  def group_state_badge(data, changed_count, create_groups)
+    if !data[:matches_pattern]
+      verdict_badge(l(:text_badge_group_not_synced), 'fail')
+    elsif !data[:redmine_group]
+      create_groups ? verdict_badge(l(:text_verdict_would_create), 'warn') :
+                      verdict_badge(l(:text_badge_group_not_created), 'fail')
+    elsif changed_count > 0
+      verdict_badge(l(:text_badge_group_pending, :count => changed_count), 'warn')
+    else
+      verdict_badge(l(:text_group_in_sync), 'ok')
+    end
+  end
+
+  # :new when the user doesn't exist yet, :changed / :unchanged otherwise
+  def field_diff_status(current_fields, key, new_value)
+    return :new if current_fields.nil?
+
+    current_fields[key].to_s.strip == new_value.to_s.strip ? :unchanged : :changed
+  end
+
+  def diff_row_class(status)
+    case status
+    when :changed then 'ldap-row-changed'
+    when :new, :added then 'ldap-row-added'
+    when :removed then 'ldap-row-removed'
+    when :unmanaged, :not_on_ldap, :not_synced then 'ldap-row-muted'
+    else ''
+    end
+  end
+
+  # One membership row: name (drill-down link) once, then plain ✓/— marks for
+  # "is currently in the Redmine group/user" and "is on the LDAP side" — the
+  # status column says what the sync does about it.
+  def membership_diff_row(row, entity_type, label_prefix, name_prefix = nil)
+    in_redmine = [:unchanged, :removed, :unmanaged, :not_on_ldap].include?(row[:status])
+    on_ldap = [:unchanged, :added, :not_synced].include?(row[:status])
+
+    name_cell = test_entity_links([row[:name]], entity_type)
+    name_cell = safe_join(["#{name_prefix}: ", name_cell]) if name_prefix
+
+    content_tag(:tr, :class => diff_row_class(row[:status])) do
+      safe_join([
+        content_tag(:td, name_cell),
+        content_tag(:td, in_redmine ? '✓' : '—', :class => 'ldap-diff-mark'),
+        content_tag(:td, on_ldap ? '✓' : '—', :class => 'ldap-diff-mark'),
+        content_tag(:td, l(:"label_diff_#{label_prefix}_#{row[:status]}"), :class => 'ldap-diff-status')
+      ])
+    end
+  end
+
+  def redmine_account_line(state)
+    return l(:text_redmine_account_missing) if state.nil?
+
+    parts = [l(:"status_#{state[:status]}")]
+    parts << "#{l(:field_auth_source)}: #{state[:auth_source]}" if state[:auth_source].present?
+    parts.join(', ')
   end
 
   def group_fields_list(fields)

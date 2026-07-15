@@ -1,11 +1,17 @@
 
 <h2><%= l(:label_test) %></h2>
 <div class="box tabular settings">
-  <em class="info"><%= l(:text_test_info) %></em>
   <%= form_tag({:controller => 'ldap_settings', :action => 'test'}, method: :put, :remote => true, :id => 'commit-test', :class => 'tabular' ) do %>
-  <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
-  <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
-  <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit') %></p>
+  <div class="ldap-test-form-grid">
+    <div class="ldap-test-form-fields">
+      <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
+      <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
+      <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit', :class => 'commit-test-button') %>
+         <%= submit_tag(l(:button_test_all_users), :class => 'commit-test-button', :data => { :test_case => 'all_users' }) %>
+         <%= submit_tag(l(:button_test_all_groups), :class => 'commit-test-button', :data => { :test_case => 'all_groups' }) %></p>
+    </div>
+    <em class="info ldap-test-info"><%= l(:text_test_info) %></em>
+  </div>
   <% end %>
 
 
@@ -13,7 +19,7 @@
   <fieldset>
     <legend><%=l(:label_result)%></legend>
 
-      <pre id="test-result" data-loading="<%= l(:label_loading) %>" data-error="<%= l(:text_test_request_failed) %>"><%=l :label_not_executed %></pre>
+      <div id="test-result" data-loading="<%= l(:label_loading) %>" data-error="<%= l(:text_test_request_failed) %>"><%=l :label_not_executed %></div>
   </fieldset>
   </div>
   

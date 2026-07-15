@@ -101,6 +101,15 @@ module LdapSync::Infectors::AuthSourceLdap
       update_closure_cache! if setting.nested_groups_enabled?
     end
 
+    # Synchronizes one login exactly like a full sync run would: creates the
+    # user when missing (create_users permitting), then syncs fields, groups,
+    # status and admin privilege. Returns the user or nil.
+    def sync_single_user(login)
+      user, is_new_user = find_or_create_user(login)
+      sync_user(user, is_new_user) if user.present?
+      user
+    end
+
     def sync_user(user, is_new_user = false, options = {})
       with_ldap_connection(options[:login], options[:password]) do |ldap|
         trace "-- #{is_new_user ? 'Creating' : 'Updating'} user '#{user.login}' (#{user.name})...",

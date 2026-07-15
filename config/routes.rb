@@ -18,6 +18,8 @@
 resources :ldap_settings, :path => 'admin/ldap_sync', :only => [:show, :edit, :update, :index]  do
   member do
     put 'test'
+    put 'apply_user'
+    put 'apply_group'
     put 'disable'
     put 'enable'
   end

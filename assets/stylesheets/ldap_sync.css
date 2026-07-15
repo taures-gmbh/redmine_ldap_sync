@@ -34,4 +34,75 @@ tr.ldap_setting.disabled a { color: #AAAAAA; }
 
 #dyngroups-cache-ttl label { float: none; margin-left: 25px; margin-right: 3px; }
 
-pre#test-result { white-space: pre-wrap; word-wrap: break-word; }
+#commit-test .ldap-test-form-grid { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; }
+
+#commit-test .ldap-test-form-fields { flex: 0 0 auto; }
+
+#commit-test .ldap-test-info { flex: 1 1 240px; max-width: 480px; margin-top: 10px; }
+
+#test-result { word-wrap: break-word; }
+
+#test-result .ldap-test-notice { background: #dfffdf; border: 1px solid #9fcf9f; color: #005f00; padding: 4px 8px; margin-bottom: 8px; }
+
+#test-result .ldap-test-warning { background: #fff3cd; border: 1px solid #e0c15c; color: #7a5d00; padding: 4px 8px; margin-bottom: 8px; }
+
+#test-result h4 { margin: 12px 0 4px 0; }
+
+#test-result .ldap-verdict { font-weight: normal; font-size: 0.9em; margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #eee; }
+
+#test-result .ldap-verdict-ok { background: #dfffdf; color: #005f00; }
+
+#test-result .ldap-verdict-warn { background: #fff3cd; color: #7a5d00; }
+
+#test-result .ldap-verdict-fail { background: #f2dede; color: #7a1f1f; }
+
+#test-result .ldap-verdict-muted { background: #eee; color: #555; }
+
+#test-result .ldap-test-error { background: #f2dede; border: 1px solid #d9a0a0; color: #7a1f1f; padding: 4px 8px; margin: 8px 0; }
+
+#test-result .ldap-test-error ul { margin: 2px 0 2px 18px; }
+
+#test-result .ldap-line-fail { color: #b00; }
+
+#test-result .ldap-test-user + .ldap-test-user,
+#test-result .ldap-test-user + .ldap-test-group,
+#test-result .ldap-test-group + .ldap-test-group,
+#test-result .ldap-test-group + .ldap-test-user { border-top: 1px solid #ddd; margin-top: 12px; padding-top: 4px; }
+
+#test-result .ldap-redmine-state { color: #555; margin: 2px 0; }
+
+table.ldap-diff { margin: 6px 0; }
+
+table.ldap-diff td, table.ldap-diff th { text-align: left; padding: 3px 8px; }
+
+table.ldap-diff .ldap-diff-status { white-space: nowrap; }
+
+table.ldap-diff .ldap-diff-mark { text-align: center; }
+
+#test-result .ldap-diff-more { margin: 4px 0; }
+
+table.ldap-diff tr.ldap-row-changed td { background-color: #fff3cd; }
+
+table.ldap-diff tr.ldap-row-added td { background-color: #dff0d8; }
+
+table.ldap-diff tr.ldap-row-removed td { background-color: #f2dede; }
+
+table.ldap-diff tr.ldap-row-muted td { color: #999; }
+
+#test-result details { margin: 8px 0; }
+
+#test-result details summary { cursor: pointer; color: #555; }
+
+#test-result details.ldap-raw-attrs table td { font-family: monospace; font-size: 11px; padding: 1px 8px; vertical-align: top; word-break: break-all; }
+
+#test-result .ldap-test-bucket { margin: 10px 0; }
+
+#test-result .ldap-test-bucket p { margin: 4px 0 2px 0; }
+
+#test-result .ldap-test-bucket .ldap-verdict { margin-left: 0; }
+
+#test-result .ldap-test-tail { margin-top: 12px; border-top: 1px solid #ddd; padding-top: 6px; color: #555; }
+
+#test-result .ldap-test-hint { font-style: italic; }
+
+#test-result button.ldap-apply-button { cursor: pointer; }

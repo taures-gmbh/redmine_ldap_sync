@@ -1,0 +1,218 @@
+<% if @applied %>
+<% notice_key = @applied == :group ?
+     (@apply_incomplete ? :notice_group_sync_incomplete : :notice_group_synced) :
+     (@apply_incomplete ? :notice_user_sync_incomplete : :notice_user_synced) %>
+<p class="<%= @apply_incomplete ? 'ldap-test-warning' : 'ldap-test-notice' %>"><%= l(notice_key) %></p>
+<% end %>
+<% if @test_case == 'all_users' %>
+<h4><%= l(:label_all_users_status) %> — <%= l(:label_a_total_of, @test.users_status.values.sum(&:size)) %></h4>
+<% { :label_bucket_would_create => [:would_create, 'warn'],
+     :label_bucket_would_update => [:would_update, 'warn'],
+     :label_bucket_would_lock_flags => [:would_lock_flags, 'warn'],
+     :label_bucket_would_archive => [:would_archive, 'warn'],
+     :label_bucket_locked_in_redmine => [:locked_in_redmine, 'muted'],
+     :label_bucket_stays_locked => [:stays_locked, 'muted'],
+     :label_bucket_locked_not_created => [:locked_not_created, 'muted'],
+     :label_bucket_skipped_other_auth => [:skipped_other_auth, 'muted'],
+     :label_bucket_not_created => [:not_created, 'fail'] }.each do |label, (key, tone)| %>
+<% next if @test.users_status[key].blank? %>
+<div class="ldap-test-bucket">
+  <%= verdict_badge("#{l(label)} (#{@test.users_status[key].size})", tone) %>
+  <p><%= test_entity_links(@test.users_status[key], 'user') %></p>
+</div>
+<% end %>
+<% elsif @test_case == 'all_groups' %>
+<h4><%= l(:label_all_groups_status) %> — <%= l(:label_a_total_of, @test.groups_status.values.sum(&:size)) %></h4>
+<% { :label_bucket_groups_in_sync => [:in_sync, 'ok'],
+     :label_bucket_groups_would_create => [:would_create, 'warn'],
+     :label_bucket_groups_not_created => [:not_created, 'fail'],
+     :label_bucket_groups_excluded => [:excluded_by_pattern, 'muted'],
+     :label_bucket_groups_only_redmine => [:only_in_redmine, 'muted'] }.each do |label, (key, tone)| %>
+<% next if @test.groups_status[key].blank? %>
+<div class="ldap-test-bucket">
+  <%= verdict_badge("#{l(label)} (#{@test.groups_status[key].size})", tone) %>
+  <p><%= test_entity_links(@test.groups_status[key], 'group') %></p>
+</div>
+<% end %>
+<% else %>
+<% @test.users_at_ldap.each do |(login, data)| %>
+<div class="ldap-test-user">
+  <% if data == :not_found %>
+  <h4><%= l(:label_user) %> "<%= login %>" <%= verdict_badge(l(:text_badge_not_found), 'fail') %></h4>
+  <% elsif data == :excluded_by_filter %>
+  <h4><%= l(:label_user) %> "<%= login %>" <%= verdict_badge(l(:text_badge_excluded), 'muted') %></h4>
+  <p class="ldap-redmine-state"><%= l(:text_user_excluded_by_filter) %></p>
+  <% else %>
+  <h4><%= l(:label_user) %> "<%= login %>" <%= user_verdict_badge(data[:verdict]) %></h4>
+  <p class="ldap-redmine-state"><%= l(:label_redmine_account) %>: <%= redmine_account_line data[:redmine] %></p>
+  <% if @ldap_setting.has_account_flags? %>
+  <p class="ldap-redmine-state">
+    <%= @ldap_setting.account_locked_proc ?
+        l(:text_account_flags_eval, :flags => data[:flags].inspect,
+          :locked => data[:locked] ? l(:general_text_yes) : l(:general_text_no)) :
+        l(:text_account_flags_value, :flags => data[:flags].inspect) %>
+  </p>
+  <% end %>
+  <table class="list ldap-diff">
+    <thead>
+      <tr>
+        <th><%= l(:label_diff_field) %></th>
+        <th><%= l(:label_diff_redmine_current) %></th>
+        <th><%= l(:label_diff_ldap_new) %></th>
+        <th><%= l(:label_diff_status) %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% data[:fields].each do |(k, v)| %>
+      <% status = field_diff_status(data[:current_fields], k, v) %>
+      <tr class="<%= diff_row_class(status) %>">
+        <td><%= user_field_name k %></td>
+        <td><%= data[:current_fields] ? (data[:current_fields][k].to_s.strip.presence || '—') : '—' %></td>
+        <td><%= v %></td>
+        <td class="ldap-diff-status"><%= l(:"label_diff_#{status}") %></td>
+      </tr>
+      <% end %>
+      <% changed_groups, unchanged_groups = (data[:group_rows] || []).partition {|r| [:added, :removed].include?(r[:status]) } %>
+      <% changed_groups.each do |row| %>
+      <%= membership_diff_row(row, 'group', 'group', l(:label_group)) %>
+      <% end %>
+    </tbody>
+  </table>
+  <% if unchanged_groups.any? %>
+  <details class="ldap-diff-more">
+    <summary><%= l(:label_groups_no_change_toggle, :count => unchanged_groups.size) %></summary>
+    <table class="list ldap-diff">
+      <thead>
+        <tr>
+          <th><%= l(:label_group) %></th>
+          <th><%= l(:label_diff_redmine_current) %></th>
+          <th><%= l(:label_diff_ldap_new) %></th>
+          <th><%= l(:label_diff_status) %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% unchanged_groups.each do |row| %>
+        <%= membership_diff_row(row, 'group', 'group') %>
+        <% end %>
+      </tbody>
+    </table>
+  </details>
+  <% end %>
+  <% if @sync_active && (data[:can_apply] || data[:verdict] == :would_create) && data[:verdict] != :in_sync %>
+  <p>
+    <button type="button" class="ldap-apply-button"
+            data-login="<%= login %>"
+            data-url="<%= apply_user_ldap_setting_path(@ldap_setting) %>"
+            data-confirm="<%= data[:verdict] == :would_create ?
+              l(:text_apply_create_confirm, :login => login) :
+              l(:text_apply_confirm, :login => login) %>"><%= l(:button_apply_sync) %></button>
+  </p>
+  <% end %>
+  <details class="ldap-raw-attrs">
+    <summary><%= l(:label_show_raw_attributes) %></summary>
+    <table>
+      <% data[:raw].each do |attr, values| %>
+      <tr><td><%= attr %></td><td><%= values.join(', ') %></td></tr>
+      <% end %>
+    </table>
+  </details>
+  <% end %>
+</div>
+<% end %>
+<% @test.groups_at_ldap.each do |(name, data)| %>
+<div class="ldap-test-group">
+  <% if data == :not_found %>
+  <h4><%= l(:label_group) %> "<%= name %>" <%= verdict_badge(l(:text_badge_not_found), 'fail') %></h4>
+  <% else %>
+  <% rows = data[:member_rows] || [] %>
+  <% changed_rows, unchanged_rows = rows.partition {|r| [:added, :removed].include?(r[:status]) } %>
+  <h4><%= l(:label_group) %> "<%= name %>" <%= group_state_badge(data, changed_rows.size, @ldap_setting.create_groups?) %></h4>
+  <% unless data[:matches_pattern] %>
+  <p class="ldap-line-fail"><%= l(:text_group_pattern_no_match) %></p>
+  <% end %>
+  <p class="ldap-redmine-state"><%= l(:label_redmine_group) %>:
+    <%= data[:redmine_group] ? l(:text_redmine_group_present) : l(:text_redmine_group_missing) %></p>
+  <% data[:fields].each do |(k, v)| %>
+  <p class="ldap-redmine-state"><%= group_field_name k %> = <%= v %></p>
+  <% end %>
+  <% if changed_rows.any? %>
+  <table class="list ldap-diff">
+    <thead>
+      <tr>
+        <th><%= l(:label_diff_member) %></th>
+        <th><%= l(:label_diff_redmine_current) %></th>
+        <th><%= l(:label_diff_ldap_new) %></th>
+        <th><%= l(:label_diff_status) %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% changed_rows.each do |row| %>
+      <%= membership_diff_row(row, 'user', 'member') %>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @sync_active && data[:matches_pattern] %>
+  <p>
+    <button type="button" class="ldap-apply-button"
+            data-group="<%= name %>"
+            data-url="<%= apply_group_ldap_setting_path(@ldap_setting) %>"
+            data-confirm="<%= l(:text_apply_group_confirm, :name => name, :count => changed_rows.size) %>"><%= l(:button_apply_sync) %></button>
+  </p>
+  <% end %>
+  <% end %>
+  <% if unchanged_rows.any? %>
+  <details class="ldap-diff-more">
+    <summary><%= l(:label_members_no_change_toggle, :count => unchanged_rows.size) %></summary>
+    <table class="list ldap-diff">
+      <thead>
+        <tr>
+          <th><%= l(:label_diff_member) %></th>
+          <th><%= l(:label_diff_redmine_current) %></th>
+          <th><%= l(:label_diff_ldap_new) %></th>
+          <th><%= l(:label_diff_status) %></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% unchanged_rows.each do |row| %>
+        <%= membership_diff_row(row, 'user', 'member') %>
+        <% end %>
+      </tbody>
+    </table>
+  </details>
+  <% end %>
+  <% end %>
+</div>
+<% end %>
+<div class="ldap-test-tail">
+  <p><%= l(:label_users_enabled) %>: <%= l(:label_a_total_of, @test.user_changes[:enabled].size) %>
+  <% if @ldap_setting.has_account_flags? %>
+  · <%= l(:label_users_locked_by_flag) %>: <%= @test.user_changes[:locked].size %>
+  <% end %>
+  <% if @ldap_setting.has_required_group? %>
+  · <%= l(:label_users_locked_by_group) %>: <%= @test.users_locked_by_group.size %>
+  <% end %>
+  <% if @ldap_setting.has_admin_group? %>
+  · <%= l(:label_admin_users) %>: <%= @test.admin_users.size %>
+  <% end %>
+  · <%= l(:label_group_plural) %>: <%= @test.non_dynamic_groups.size %>
+  <% if @ldap_setting.sync_dyngroups? %>
+  · <%= l(:label_dynamic_groups) %>: <%= @test.dynamic_groups.size %>
+  <% end %>
+  </p>
+  <p class="ldap-test-hint"><%= l(:text_counts_hint) %></p>
+</div>
+<% end %>
+<% if @test.trace_errors.any? %>
+<div class="ldap-test-error">
+  <p><strong><%= l(:label_test_errors) %></strong></p>
+  <ul>
+    <% @test.trace_errors.uniq.each do |msg| %>
+    <li><%= msg %></li>
+    <% end %>
+  </ul>
+  <details class="ldap-test-log">
+    <summary><%= l(:label_log_messages) %></summary>
+    <pre><%= @test.messages %></pre>
+  </details>
+</div>
+<% end %>

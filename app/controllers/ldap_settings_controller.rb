@@ -20,7 +20,7 @@ class LdapSettingsController < ApplicationController
   menu_item :ldap_sync
 
   before_action :require_admin
-  before_action :find_ldap_setting, :only => [:show, :edit, :update, :test, :enable, :disable]
+  before_action :find_ldap_setting, :only => [:show, :edit, :update, :test, :apply_user, :apply_group, :enable, :disable]
   before_action :update_ldap_setting_from_params, :only => [:edit, :update, :test]
 
   if respond_to? :skip_before_action
@@ -75,26 +75,102 @@ class LdapSettingsController < ApplicationController
     end
   end
 
-  # GET /ldap_settings/1/test
+  # PUT /ldap_settings/1/test
   def test
-    return render 'ldap_setting_invalid' unless @ldap_setting.valid?
+    return render :partial => 'ldap_setting_invalid' unless @ldap_setting.valid?
 
-    #ldap_test = params[:ldap_test]
-    #users     = ldap_test.fetch(:test_users, '').split(',')
-    #groups    = ldap_test.fetch(:test_groups, '').split(',')
-    #[users, groups].each {|l| l.map(&:strip).reject(&:blank?) }
     users = params[:test_users].to_s.split(',').map(&:strip).reject(&:blank?)
     groups = params[:test_groups].to_s.split(',').map(&:strip).reject(&:blank?)
+    @test_case = %w(all_users all_groups).include?(params[:test_case]) ? params[:test_case] : 'entities'
 
+    # LdapTest.new forces the (in-memory) setting active for the test bind, so
+    # capture the real state first — it gates the apply button
+    @sync_active = @ldap_setting.active?
     @test = LdapTest.new(@ldap_setting)
-    #@test.bind_user = ldap_test[:bind_user]
-    #@test.bind_password = ldap_test[:bind_password]
 
     if @test.valid?
-      @test.run_with_users_and_groups(users, groups)
+      case @test_case
+      when 'all_users' then @test.run_all_users
+      when 'all_groups' then @test.run_all_groups
+      else @test.run_with_users_and_groups(users, groups)
+      end
+      render :partial => 'test_result'
     else
-      render 'ldap_test_invalid'
+      render :partial => 'ldap_test_invalid'
     end
+  end
+
+  # PUT /ldap_settings/1/apply_user
+  # Runs the plugin's real per-user sync for a single login — creating the
+  # user when missing, exactly like a full sync run — then re-runs the test
+  # for it to show the new state.
+  def apply_user
+    auth_source = @ldap_setting.auth_source_ldap
+    login = params[:login].to_s
+    user = ::User.where("LOWER(login) = ?", login.mb_chars.downcase.to_s).first
+
+    if !@ldap_setting.active? || (user.present? && user.auth_source_id != auth_source.id)
+      render :partial => 'ldap_apply_invalid'
+      return
+    end
+
+    auth_source.sync_single_user(login)
+
+    @applied = :user
+    @test_case = 'entities'
+    @sync_active = true
+    @test = LdapTest.new(@ldap_setting)
+    @test.run_with_users_and_groups([login], [])
+
+    # If the re-test does not come back in sync, part of the sync failed
+    # (e.g. mail address already taken) — warn instead of claiming success
+    data = @test.users_at_ldap[login]
+    @apply_incomplete = !(data.is_a?(Hash) && data[:verdict] == :in_sync)
+    render :partial => 'test_result'
+  end
+
+  # PUT /ldap_settings/1/apply_group
+  # Applies a group's member delta by running the real per-user sync for every
+  # user behind an added/removed row — creating missing users like a full sync
+  # run would — then re-runs the group test to show the new state.
+  def apply_group
+    name = params[:group].to_s
+
+    unless @ldap_setting.active?
+      render :partial => 'ldap_apply_invalid'
+      return
+    end
+
+    auth_source = @ldap_setting.auth_source_ldap
+    # recompute the delta server-side — never trust the client's view of it
+    diff = LdapTest.new(@ldap_setting)
+    diff.run_with_users_and_groups([], [name])
+    data = diff.groups_at_ldap[name]
+
+    if !data.is_a?(Hash) || !data[:matches_pattern]
+      render :partial => 'ldap_apply_invalid'
+      return
+    end
+
+    logins = data[:member_rows].
+      select {|row| [:added, :removed].include?(row[:status]) }.
+      map {|row| row[:name] }
+
+    # one bound connection for the whole batch (sync_single_user reuses it)
+    auth_source.send(:with_ldap_connection) do |_|
+      logins.each {|login| auth_source.sync_single_user(login) }
+    end
+
+    @applied = :group
+    @test_case = 'entities'
+    @sync_active = true
+    @test = LdapTest.new(@ldap_setting)
+    @test.run_with_users_and_groups([], [name])
+
+    re_test = @test.groups_at_ldap[name]
+    @apply_incomplete = !(re_test.is_a?(Hash) &&
+      re_test[:member_rows].none? {|row| [:added, :removed].include?(row[:status]) })
+    render :partial => 'test_result'
   end
 
   # PUT /ldap_settings/1

@@ -1,0 +1,6 @@
+<p><%= l(:error_ldap_test_invalid) %></p>
+<ul>
+  <% @test.errors.full_messages.each do |msg| %>
+  <li><%= msg %></li>
+  <% end %>
+</ul>

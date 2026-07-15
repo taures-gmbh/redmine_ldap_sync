@@ -22,7 +22,7 @@ class LdapTest
   include ActiveModel::Validations
   extend ActiveModel::Naming
 
-  attr_accessor :setting, :bind_user, :bind_password, :test_users, :test_groups, :messages, :user_attrs, :group_attrs, :users_at_ldap, :groups_at_ldap, :non_dynamic_groups, :dynamic_groups, :users_locked_by_group, :admin_users, :user_changes
+  attr_accessor :setting, :bind_user, :bind_password, :test_users, :test_groups, :messages, :user_attrs, :group_attrs, :users_at_ldap, :groups_at_ldap, :non_dynamic_groups, :dynamic_groups, :users_locked_by_group, :admin_users, :user_changes, :users_status, :groups_status, :trace_errors
 
   delegate :auth_source_ldap, :to => :setting
   delegate :users, :to => :auth_source_ldap
@@ -41,6 +41,9 @@ class LdapTest
     @dynamic_groups = {}
     @users_locked_by_group = []
     @admin_users = []
+    @users_status = {}
+    @groups_status = {}
+    @trace_errors = []
   end
 
   def initialize_ldap_con(login, password)
@@ -55,15 +58,27 @@ class LdapTest
         if user_data
           @user_attrs ||= user_data
           flags = setting.has_account_flags? ? user_data[n(:account_flags)].first : nil
+          local_user, other_auth = local_user_for(login)
+          group_changes = groups_changes(local_user || User.new {|u| u.login = login })
+          fields = get_user_fields(login, user_data, :include_required => true)
+          current_fields = current_user_fields(local_user, fields.keys)
+          rows = group_rows(ldap, local_user, group_changes)
+          verdict = user_verdict(local_user, other_auth, flags, group_changes)
+          verdict = :in_sync if verdict == :would_update && !pending_changes?(fields, current_fields, rows)
           users_at_ldap[login] = {
-            :fields => get_user_fields(login, user_data, :include_required => true),
-            :groups => groups_changes(User.new {|u| u.login = login }),
+            :fields => fields,
+            :current_fields => current_fields,
+            :groups => group_changes,
+            :group_rows => rows,
             :raw => raw_attributes(user_data),
             :flags => flags,
-            :locked => (account_locked?(flags) if setting.has_account_flags?)
+            :locked => (account_locked?(flags) if setting.has_account_flags?),
+            :redmine => redmine_user_state(local_user),
+            :verdict => verdict,
+            :can_apply => local_user.present? && !other_auth
           }
         else
-          users_at_ldap[login] = :not_found
+          users_at_ldap[login] = in_ldap_without_filter?(ldap, login) ? :excluded_by_filter : :not_found
         end
       end
 
@@ -85,10 +100,12 @@ class LdapTest
         if group_data
           @group_attrs ||= group_data
           groupname = group_data[n(:groupname)].try(:first) || name
+          local_group = ::Group.where("LOWER(lastname) = ?", name.mb_chars.downcase.to_s).first
           groups_at_ldap[name] = {
             :fields => get_group_fields(name, group_data),
             :matches_pattern => !setting.has_groupname_pattern? || !!(setting.groupname_regexp =~ groupname),
-            :members => group_members_status(ldap, group_data)
+            :redmine_group => local_group.present?,
+            :member_rows => group_member_rows(ldap, local_group, group_data)
           }
         else
           groups_at_ldap[name] = :not_found
@@ -109,6 +126,93 @@ class LdapTest
     error(e.message + e.backtrace.join("\n  "))
   end
 
+  # Whether the diff for a user contains anything a sync run would change
+  def pending_changes?(fields, current_fields, group_rows)
+    return true if current_fields && fields.any? {|k, v| current_fields[k].to_s.strip != v.to_s.strip }
+
+    group_rows.any? {|row| [:added, :removed].include?(row[:status]) }
+  end
+
+  # Full LDAP <-> Redmine diff over all users, bucketed by what a
+  # synchronization would do with each login.
+  def run_all_users
+    with_ldap_connection(@bind_user, @bind_password) do |ldap|
+      @user_changes = ldap_users
+      local = ::User.logged.pluck(:login, :status, :auth_source_id).
+        each_with_object({}) {|(l, s, a), h| h[l.mb_chars.downcase.to_s] = [s, a] }
+
+      user_changes[:enabled].each do |login|
+        status, auth = local[login.mb_chars.downcase.to_s]
+        bucket =
+          if status.nil?
+            setting.create_users? ? :would_create : :not_created
+          elsif auth != auth_source_ldap.id
+            :skipped_other_auth
+          elsif status == ::User::STATUS_LOCKED
+            :locked_in_redmine
+          else
+            :would_update
+          end
+        (users_status[bucket] ||= []) << login
+      end
+
+      user_changes[:locked].each do |login|
+        status, auth = local[login.mb_chars.downcase.to_s]
+        bucket =
+          if status.nil?
+            :locked_not_created
+          elsif auth != auth_source_ldap.id
+            :skipped_other_auth
+          elsif status == ::User::STATUS_LOCKED
+            :stays_locked
+          else
+            :would_lock_flags
+          end
+        (users_status[bucket] ||= []) << login
+      end
+
+      user_changes[:deleted].each {|login| (users_status[:would_archive] ||= []) << login }
+    end
+  rescue Exception => e
+    error(e.message + e.backtrace.join("\n  "))
+  end
+
+  # Full LDAP <-> Redmine diff over all groups, bucketed by what a
+  # synchronization would do with each group.
+  def run_all_groups
+    with_ldap_connection(@bind_user, @bind_password) do |ldap|
+      ldap_names = []
+      find_all_groups(ldap, nil, n(:groupname)) {|entry| ldap_names << entry.first unless entry.first.blank? }
+
+      local_names = ::Group.givable.pluck(:lastname)
+      local_set = local_names.map {|name| name.mb_chars.downcase.to_s }.to_set
+
+      ldap_names.uniq.sort_by(&:downcase).each do |name|
+        matches = !setting.has_groupname_pattern? || !!(setting.groupname_regexp =~ name)
+        bucket =
+          if !matches
+            :excluded_by_pattern
+          elsif local_set.include?(name.mb_chars.downcase.to_s)
+            :in_sync
+          elsif setting.create_groups?
+            :would_create
+          else
+            :not_created
+          end
+        (groups_status[bucket] ||= []) << name
+      end
+
+      ldap_set = ldap_names.map {|name| name.mb_chars.downcase.to_s }.to_set
+      local_names.sort_by(&:downcase).each do |name|
+        next if ldap_set.include?(name.mb_chars.downcase.to_s)
+
+        (groups_status[:only_in_redmine] ||= []) << name
+      end
+    end
+  rescue Exception => e
+    error(e.message + e.backtrace.join("\n  "))
+  end
+
   def self.human_attribute_name(attr, *args)
     attr = attr.to_s.sub(/_id$/, '')
 
@@ -120,11 +224,126 @@ class LdapTest
   REDACTED_ATTRIBUTES = %w(userpassword unicodepwd sambantpassword sambalmpassword krbprincipalkey ipanthash).freeze
 
   private
-    # Resolves the tested group's direct members to logins and buckets them by
-    # what a synchronization would do with them: :synced (active on LDAP),
-    # :locked, or :not_synced (outside the user filter, e.g. service accounts).
+    # The Redmine user for a login plus whether it belongs to a different
+    # auth source (the sync skips those).
+    def local_user_for(login)
+      user = ::User.where("LOWER(login) = ?", login.mb_chars.downcase.to_s).first
+      [user, user.present? && user.auth_source_id != auth_source_ldap.id]
+    end
+
+    # Whether the login exists on LDAP when the configured user filter is NOT
+    # applied — distinguishes "excluded by the filter" from "does not exist".
+    def in_ldap_without_filter?(ldap, login)
+      filter = Net::LDAP::Filter.eq(:objectclass, setting.class_user) &
+               Net::LDAP::Filter.eq(setting.login, login)
+      ldap_search(ldap, {:base => setting.base_dn, :filter => filter,
+                         :attributes => [setting.login], :return_result => true}).present?
+    end
+
+    # The user's complete group membership as diff rows: groups the sync would
+    # add or remove, unchanged LDAP-managed memberships, plus memberships the
+    # sync leaves alone (pattern mismatch or not present on LDAP at all).
+    def group_rows(ldap, local_user, group_changes)
+      rows = group_changes[:added].to_a.sort_by(&:downcase).map {|g| {:name => g, :status => :added} }
+
+      current = local_user ? local_user.groups.map {|g| g.name } : []
+      return rows if current.empty?
+
+      deleted = group_changes[:deleted].map {|g| g.mb_chars.downcase.to_s }
+      on_ldap = ldap_group_names(ldap, current)
+      re = setting.groupname_regexp
+
+      current.sort_by(&:downcase).each do |name|
+        dc = name.mb_chars.downcase.to_s
+        status = if deleted.include?(dc)
+          :removed
+        elsif setting.has_groupname_pattern? && !(re =~ name)
+          :unmanaged
+        elsif !on_ldap.include?(dc)
+          :not_on_ldap
+        else
+          :unchanged
+        end
+        rows << {:name => name, :status => status}
+      end
+      rows
+    end
+
+    # Which of the given group names exist on LDAP (downcased set)
+    def ldap_group_names(ldap, names)
+      return Set.new if names.empty?
+
+      filter = names.map {|g| Net::LDAP::Filter.eq(setting.groupname, g) }.reduce(:|)
+      found = find_all_groups(ldap, filter, n(:groupname)) || []
+      found.map {|e| Array(e).first.to_s.mb_chars.downcase.to_s }.to_set
+    end
+
+    # The Redmine user's current values for the fields the sync would apply,
+    # so the test can show an actual diff instead of just the LDAP side.
+    def current_user_fields(user, keys)
+      return nil if user.nil?
+
+      keys.each_with_object({}) do |key, fields|
+        fields[key] = if key =~ /\A\d+\z/
+          user.custom_field_value(key.to_i)
+        elsif user.respond_to?(key)
+          user.send(key)
+        end
+      end
+    end
+
+    def redmine_user_state(user)
+      return nil if user.nil?
+
+      status = if user.active?
+        :active
+      elsif user.locked?
+        :locked
+      else
+        :registered
+      end
+      { :status => status, :auth_source => user.auth_source.try(:name) }
+    end
+
+    # What a synchronization would do with this user, mirroring
+    # sync_users/sync_user_status (with the worker's ACTIVATE_USERS=false).
+    def user_verdict(user, other_auth, flags, group_changes)
+      return :skipped_other_auth if other_auth
+
+      ldap_locked = setting.has_account_flags? && account_locked?(flags)
+
+      if user.nil?
+        return :locked_not_created if ldap_locked
+
+        return setting.create_users? ? :would_create : :not_created
+      end
+
+      required_ok = true
+      if setting.has_required_group?
+        current = user.groups.map {|g| g.name.mb_chars.downcase.to_s }
+        added = group_changes[:added].map {|g| g.mb_chars.downcase.to_s }
+        deleted = group_changes[:deleted].map {|g| g.mb_chars.downcase.to_s }
+        required_ok = ((current | added) - deleted).include?(setting.required_group.mb_chars.downcase.to_s)
+      end
+
+      if user.locked?
+        if !ldap_locked && setting.has_required_group? && required_ok
+          :would_activate
+        else
+          :stays_locked
+        end
+      elsif ldap_locked
+        :would_lock_flags
+      elsif !required_ok
+        :would_lock_required_group
+      else
+        :would_update
+      end
+    end
+
+    # Resolves the tested group's direct members on LDAP to logins.
     # Nested group members are not resolved.
-    def group_members_status(ldap, group_data)
+    def ldap_member_logins(ldap, group_data)
       logins =
         case setting.group_membership
         when 'on_groups'
@@ -154,17 +373,40 @@ class LdapTest
           map {|e| e[n(:login)].first }
       end
 
-      enabled = Set.new(user_changes[:enabled].map(&:downcase))
-      locked = Set.new(user_changes[:locked].map(&:downcase))
-      logins.compact.uniq.sort_by(&:downcase).group_by do |login|
-        if enabled.include?(login.downcase)
-          :synced
-        elsif locked.include?(login.downcase)
-          :locked
-        else
-          :not_synced
-        end
+      logins.compact.uniq
+    end
+
+    # Member diff between the Redmine group and the LDAP group: members the
+    # user syncs would add or remove, unchanged ones, LDAP members that never
+    # sync (outside the user filter), and Redmine members the sync leaves
+    # alone (different auth source / local accounts).
+    def group_member_rows(ldap, local_group, group_data)
+      ldap_logins = ldap_member_logins(ldap, group_data)
+      ldap_set = ldap_logins.map {|l| l.mb_chars.downcase.to_s }.to_set
+      syncable = Set.new((user_changes[:enabled] + user_changes[:locked]).map {|l| l.mb_chars.downcase.to_s })
+
+      current = local_group ? local_group.users.map {|u| [u.login, u.auth_source_id] } : []
+      current_set = current.map {|login, _| login.mb_chars.downcase.to_s }.to_set
+
+      rows = []
+      ldap_logins.sort_by(&:downcase).each do |login|
+        dc = login.mb_chars.downcase.to_s
+        next if current_set.include?(dc)
+
+        rows << {:name => login, :status => syncable.include?(dc) ? :added : :not_synced}
       end
+      current.sort_by {|login, _| login.downcase }.each do |login, auth_id|
+        dc = login.mb_chars.downcase.to_s
+        status = if ldap_set.include?(dc)
+          :unchanged
+        elsif auth_id == auth_source_ldap.id
+          :removed
+        else
+          :unmanaged
+        end
+        rows << {:name => login, :status => status}
+      end
+      rows
     end
 
     # The raw LDAP entry as a printable {attribute => [values]} hash, so the
@@ -211,6 +453,9 @@ class LdapTest
 
     def trace(msg = "", options = {})
       @messages += "#{msg}\n" if msg
+      # errors get surfaced prominently in the result; the rest of the log
+      # stays available behind them for debugging
+      @trace_errors << msg.to_s.split("\n").first if options[:level] == :error && msg
     end
 
     def running_rake?; true; end

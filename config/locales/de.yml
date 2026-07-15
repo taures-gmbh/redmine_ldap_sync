@@ -109,6 +109,12 @@ de:
   label_raw_ldap_attributes: "LDAP-Attribute (roh)"
   text_account_flags_eval: "Konto-Flags = %{flags} → gesperrt laut Bedingung: %{locked}"
   text_account_flags_value: "Konto-Flags = %{flags} (keine Bedingung für gesperrtes Konto konfiguriert)"
+  text_group_pattern_match: "Der Gruppenname entspricht dem Gruppennamen-Muster — die Gruppe wird synchronisiert"
+  text_group_pattern_no_match: "Der Gruppenname entspricht NICHT dem Gruppennamen-Muster — die Gruppe wird nicht synchronisiert"
+  label_group_members: "Mitglieder laut LDAP"
+  label_members_synced: "würden synchronisiert"
+  label_members_locked: "gesperrt"
+  label_members_not_synced: "nicht synchronisiert (vom Benutzerfilter ausgeschlossen)"
 
   field_base_settings: "Grundeinstellungen"
   option_custom: "Angepasst"

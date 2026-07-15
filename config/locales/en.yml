@@ -109,6 +109,12 @@ en:
   label_raw_ldap_attributes: "Raw LDAP attributes"
   text_account_flags_eval: "Account flags = %{flags} → locked according to the condition: %{locked}"
   text_account_flags_value: "Account flags = %{flags} (no locked-account condition configured)"
+  text_group_pattern_match: "The group name matches the group name pattern — the group will be synchronized"
+  text_group_pattern_no_match: "The group name does NOT match the group name pattern — the group will not be synchronized"
+  label_group_members: "Members at LDAP"
+  label_members_synced: "would be synchronized"
+  label_members_locked: "locked"
+  label_members_not_synced: "not synchronized (outside the user filter)"
 
   field_base_settings: "Base settings"
   option_custom: "Customized"

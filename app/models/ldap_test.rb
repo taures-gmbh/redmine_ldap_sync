@@ -84,8 +84,11 @@ class LdapTest
         group_data = find_group(ldap, name, nil)
         if group_data
           @group_attrs ||= group_data
+          groupname = group_data[n(:groupname)].try(:first) || name
           groups_at_ldap[name] = {
-            :fields => get_group_fields(name, group_data)
+            :fields => get_group_fields(name, group_data),
+            :matches_pattern => !setting.has_groupname_pattern? || !!(setting.groupname_regexp =~ groupname),
+            :members => group_members_status(ldap, group_data)
           }
         else
           groups_at_ldap[name] = :not_found
@@ -117,6 +120,53 @@ class LdapTest
   REDACTED_ATTRIBUTES = %w(userpassword unicodepwd sambantpassword sambalmpassword krbprincipalkey ipanthash).freeze
 
   private
+    # Resolves the tested group's direct members to logins and buckets them by
+    # what a synchronization would do with them: :synced (active on LDAP),
+    # :locked, or :not_synced (outside the user filter, e.g. service accounts).
+    # Nested group members are not resolved.
+    def group_members_status(ldap, group_data)
+      logins =
+        case setting.group_membership
+        when 'on_groups'
+          memberids = group_data[n(:member)].to_a
+          if setting.user_memberid == setting.login
+            memberids
+          else
+            map = find_all_users(ldap, ns(:login, :user_memberid)).each_with_object({}) do |e, h|
+              h[e[n(:user_memberid)].first] = e[n(:login)].first
+            end
+            memberids.map {|m| map[m] || m }
+          end
+        else # 'on_members'
+          groupid = group_data[n(:groupid)].try(:first)
+          if groupid.blank?
+            []
+          else
+            find_all_users(ldap, ns(:login, :user_groups)).
+              select {|e| e[n(:user_groups)].include?(groupid) }.
+              map {|e| e[n(:login)].first }
+          end
+        end
+
+      if setting.has_primary_group? && (gid = group_data[n(:primary_group)].try(:first)).present?
+        logins |= find_all_users(ldap, ns(:login, :primary_group)).
+          select {|e| e[n(:primary_group)].try(:first) == gid }.
+          map {|e| e[n(:login)].first }
+      end
+
+      enabled = Set.new(user_changes[:enabled].map(&:downcase))
+      locked = Set.new(user_changes[:locked].map(&:downcase))
+      logins.compact.uniq.sort_by(&:downcase).group_by do |login|
+        if enabled.include?(login.downcase)
+          :synced
+        elsif locked.include?(login.downcase)
+          :locked
+        else
+          :not_synced
+        end
+      end
+    end
+
     # The raw LDAP entry as a printable {attribute => [values]} hash, so the
     # test output shows the admin the actual data the mappings and the
     # locked-account expression operate on. Password-ish attributes are

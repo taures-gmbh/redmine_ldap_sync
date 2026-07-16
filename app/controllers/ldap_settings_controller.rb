@@ -17,6 +17,7 @@
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
 class LdapSettingsController < ApplicationController
   layout 'admin'
+  self.main_menu = false
   menu_item :ldap_sync
 
   before_action :require_admin
@@ -30,6 +31,12 @@ class LdapSettingsController < ApplicationController
   # GET /ldap_settings
   def index
     @ldap_settings = LdapSetting.all
+
+    # With a single LDAP source the list is a pointless hop — go straight to it
+    if @ldap_settings.size == 1
+      redirect_to edit_ldap_setting_path(@ldap_settings.first)
+      return
+    end
 
     respond_to do |format|
       format.html # index.html.erb

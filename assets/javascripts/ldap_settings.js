@@ -73,18 +73,24 @@ $(function() {
   $('#ldap_setting_dyngroups')
     .bind('change keyup', function() { show_dyngroups_ttl(this); });
 
-  $('input[name^="ldap_test"]').keydown(function (e) {
-    if (e.which == 13) {
-      $('#commit-test').click();
-      e.preventDefault();
-    }
-  });
+  // the Test tab mirrors the lock-detection settings; both directions stay
+  // in sync, the settings-form field remains the single saved source
+  var bindMirror = function(mirrorId, realId) {
+    var mirror = $('#' + mirrorId), real = $('#' + realId);
+    if (!mirror.length || !real.length) return;
+    mirror.val(real.val());
+    mirror.on('input', function() { real.val(this.value); });
+    real.on('input', function() { mirror.val(this.value); });
+  };
+  bindMirror('mirror_account_flags', 'ldap_setting_account_flags');
+  bindMirror('mirror_account_locked_test', 'ldap_setting_account_locked_test');
 
-  $('form[id^="edit_ldap_setting"]').submit(function() {
-    var current_tab = $('a[id^="tab-"].selected').attr('id').substring(4);
-    $('form[id^="edit_ldap_setting"]').append(
-      '<input type="hidden" name="tab" value="' + current_tab + '">'
-    );
+  // Enter in a test field runs the test (instead of a stray form submit)
+  $('#test_users, #test_groups').on('keydown', function (e) {
+    if (e.which == 13) {
+      e.preventDefault();
+      $('#commit-test-submit').click();
+    }
   });
 
   //$('#commit-test')
@@ -104,6 +110,14 @@ $(function() {
     // test case explicitly ("Ausführen" carries none = specific entities)
     var data = form.serialize();
     if (testCase) data += '&test_case=' + encodeURIComponent(testCase);
+
+    // live evaluation: the test uses the CURRENT settings from the
+    // configuration tab, including unsaved edits (nothing gets persisted)
+    var settingsData = $('form[id^="edit_ldap_setting"]')
+      .find(':input')
+      .not('[name="_method"], [name="authenticity_token"], [type="submit"]')
+      .serialize();
+    if (settingsData) data += '&' + settingsData;
 
     $.ajax({
       url : form.attr('action'),

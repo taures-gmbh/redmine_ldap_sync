@@ -5,7 +5,7 @@
 <p class="<%= @apply_incomplete ? 'ldap-test-warning' : 'ldap-test-notice' %>"><%= l(notice_key) %></p>
 <% end %>
 <% if @test_case == 'all_users' %>
-<h4><%= l(:label_all_users_status) %> — <%= l(:label_a_total_of, @test.users_status.values.sum(&:size)) %></h4>
+<h4><%= l(:label_all_users_status) %> (<%= l(:label_a_total_of, @test.users_status.values.sum(&:size)) %>)</h4>
 <% { :label_bucket_would_create => [:would_create, 'warn'],
      :label_bucket_would_update => [:would_update, 'warn'],
      :label_bucket_would_lock_flags => [:would_lock_flags, 'warn'],
@@ -22,7 +22,7 @@
 </div>
 <% end %>
 <% elsif @test_case == 'all_groups' %>
-<h4><%= l(:label_all_groups_status) %> — <%= l(:label_a_total_of, @test.groups_status.values.sum(&:size)) %></h4>
+<h4><%= l(:label_all_groups_status) %> (<%= l(:label_a_total_of, @test.groups_status.values.sum(&:size)) %>)</h4>
 <% { :label_bucket_groups_in_sync => [:in_sync, 'ok'],
      :label_bucket_groups_would_create => [:would_create, 'warn'],
      :label_bucket_groups_not_created => [:not_created, 'fail'],
@@ -46,11 +46,12 @@
   <h4><%= l(:label_user) %> "<%= login %>" <%= user_verdict_badge(data[:verdict]) %></h4>
   <p class="ldap-redmine-state"><%= l(:label_redmine_account) %>: <%= redmine_account_line data[:redmine] %></p>
   <% if @ldap_setting.has_account_flags? %>
-  <p class="ldap-redmine-state">
-    <%= @ldap_setting.account_locked_proc ?
-        l(:text_account_flags_eval, :flags => data[:flags].inspect,
-          :locked => data[:locked] ? l(:general_text_yes) : l(:general_text_no)) :
-        l(:text_account_flags_value, :flags => data[:flags].inspect) %>
+  <p class="ldap-redmine-state"><%= l(:label_lock_state) %>: <code><%= data[:flags].inspect %></code>
+    <% if @ldap_setting.account_locked_proc %>
+    <%= data[:locked] ? verdict_badge(l(:text_flags_locked), 'warn') : verdict_badge(l(:text_flags_not_locked), 'ok') %>
+    <% else %>
+    <%= verdict_badge(l(:text_no_lock_condition), 'muted') %>
+    <% end %>
   </p>
   <% end %>
   <table class="list ldap-diff">
@@ -111,8 +112,12 @@
   <details class="ldap-raw-attrs">
     <summary><%= l(:label_show_raw_attributes) %></summary>
     <table>
+      <% flags_attr = @ldap_setting.has_account_flags? ? @ldap_setting.account_flags.to_s.downcase : nil %>
       <% data[:raw].each do |attr, values| %>
-      <tr><td><%= attr %></td><td><%= values.join(', ') %></td></tr>
+      <tr>
+        <td><%= attr %><%= ' '.html_safe + verdict_badge(l(:field_account_flags), 'muted') if attr.to_s == flags_attr %></td>
+        <td><%= values.join(', ') %></td>
+      </tr>
       <% end %>
     </table>
   </details>

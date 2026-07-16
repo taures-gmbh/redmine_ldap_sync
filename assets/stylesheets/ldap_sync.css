@@ -18,6 +18,74 @@
  */
 fieldset.box legend { padding-left: 2px; background-image: none; cursor: default; }
 
+fieldset.box.collapsible > legend { cursor: pointer; }
+
+fieldset.box.collapsible > legend::before { content: '▾ '; font-size: 0.85em; }
+
+fieldset.box.collapsible.collapsed > legend::before { content: '▸ '; }
+
+h2 .ldap-verdict { font-size: 0.55em; vertical-align: middle; }
+
+/* Settings card grid: setup order — schema (full width), users | groups,
+   field mapping (full width) */
+.ldap-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; margin-bottom: 4px; }
+
+#ldap-schema, #ldap-card-fields { grid-column: 1 / -1; }
+
+/* Inside the full-width schema card the fields flow in two columns */
+.ldap-schema-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+
+.ldap-schema-fields .ldap-span { grid-column: 1 / -1; }
+
+.ldap-subhead { margin: 4px 0 10px 0; padding-top: 10px; border-top: 1px solid #ececee; font-size: 1em; font-weight: 600; }
+
+@media (max-width: 1100px) {
+  .ldap-settings-grid, .ldap-schema-fields { grid-template-columns: 1fr; }
+}
+
+.ldap-settings-grid .ldap-card { margin: 0; }
+
+/* One calm card language: plain bold titles instead of chip-style legends */
+#content .ldap-card > legend { background: transparent !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 6px 0 0 !important; font-size: 1.05em; font-weight: 600; color: inherit; }
+
+/* Hints read calmer without italics */
+#content .ldap-card em.info, #content .ldap-card .ldap-test-info { font-style: normal; }
+
+/* Quiet fields table: no zebra, no grey headers — separators only */
+#content .ldap-card table.list th { background: transparent !important; }
+
+#content .ldap-card table.list tr.odd td, #content .ldap-card table.list tr.even td { background: transparent !important; }
+
+#content .ldap-card table.list td { border-bottom: 1px solid #ececee; }
+
+#content .ldap-card table.list tr.group td { background: transparent !important; font-weight: 600; border-bottom: 1px solid #d8d8da; }
+
+/* Result area matches the card language */
+.ldap-result-label { font-weight: 600; margin: 12px 0 4px 0; }
+
+#test-result { background: #f7f7f8; border: 1px solid #e8e8ea; border-radius: 4px; padding: 10px 12px; }
+
+/* Stacked labels inside cards: label above input, hint below.
+   !important: the theme's #content .tabular rules (float/negative margin)
+   must lose inside cards. */
+#content form.tabular .ldap-card p, #content .ldap-card form.tabular p { padding-left: 0 !important; margin: 0 0 12px 0 !important; overflow: visible; }
+
+#content form.tabular .ldap-card p > label, #content .ldap-card form.tabular p > label { float: none !important; display: block !important; width: auto !important; margin: 0 0 3px 0 !important; text-align: left !important; font-weight: 600; }
+
+#content form.tabular .ldap-card input[type="text"], #content .ldap-card form.tabular input[type="text"], #content form.tabular .ldap-card select, #content .ldap-card form.tabular select { max-width: 100%; box-sizing: border-box; }
+
+#content form.tabular .ldap-card em.info, #content .ldap-card form.tabular em.info { display: block; margin: 3px 0 0 0 !important; padding: 0 !important; font-size: 0.85em; color: #777; width: auto !important; max-width: 100% !important; position: static !important; }
+
+#content form.tabular .ldap-card p.ldap-card-info, #content .ldap-card form.tabular p.ldap-card-info { margin-bottom: 12px !important; }
+
+#content form.tabular .ldap-card p.ldap-card-info em.info, #content .ldap-card form.tabular p.ldap-card-info em.info { margin: 0 !important; }
+
+/* Checkboxes as one inline row: checkbox first, label after */
+#content form.tabular .ldap-card p:has(> input[type="checkbox"]), #content .ldap-card form.tabular p:has(> input[type="checkbox"]) { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 7px; }
+
+#content form.tabular .ldap-card p:has(> input[type="checkbox"]) > label, #content .ldap-card form.tabular p:has(> input[type="checkbox"]) > label { margin: 0 !important; }
+
+
 #admin-menu a.ldap-sync { background-image:url('../images/server_key.png'); }
 
 tr.ldap_setting.disabled { color: #AAAAAA; }
@@ -34,11 +102,9 @@ tr.ldap_setting.disabled a { color: #AAAAAA; }
 
 #dyngroups-cache-ttl label { float: none; margin-left: 25px; margin-right: 3px; }
 
-#commit-test .ldap-test-form-grid { display: flex; flex-wrap: wrap; gap: 0 24px; align-items: flex-start; }
+#commit-test .ldap-test-form-row { display: flex; flex-wrap: wrap; gap: 0 16px; align-items: flex-end; }
 
-#commit-test .ldap-test-form-fields { flex: 0 0 auto; }
-
-#commit-test .ldap-test-info { flex: 1 1 240px; max-width: 480px; margin-top: 10px; }
+#content .ldap-card #commit-test .ldap-test-form-row p { margin-bottom: 8px !important; }
 
 #test-result { word-wrap: break-word; }
 
@@ -48,15 +114,15 @@ tr.ldap_setting.disabled a { color: #AAAAAA; }
 
 #test-result h4 { margin: 12px 0 4px 0; }
 
-#test-result .ldap-verdict { font-weight: normal; font-size: 0.9em; margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #eee; }
+.ldap-verdict { font-weight: normal; font-size: 0.9em; margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #eee; }
 
-#test-result .ldap-verdict-ok { background: #dfffdf; color: #005f00; }
+.ldap-verdict-ok { background: #dfffdf; color: #005f00; }
 
-#test-result .ldap-verdict-warn { background: #fff3cd; color: #7a5d00; }
+.ldap-verdict-warn { background: #fff3cd; color: #7a5d00; }
 
-#test-result .ldap-verdict-fail { background: #f2dede; color: #7a1f1f; }
+.ldap-verdict-fail { background: #f2dede; color: #7a1f1f; }
 
-#test-result .ldap-verdict-muted { background: #eee; color: #555; }
+.ldap-verdict-muted { background: #eee; color: #555; }
 
 #test-result .ldap-test-error { background: #f2dede; border: 1px solid #d9a0a0; color: #7a1f1f; padding: 4px 8px; margin: 8px 0; }
 

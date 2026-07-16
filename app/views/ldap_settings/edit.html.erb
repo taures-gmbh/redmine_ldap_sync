@@ -2,17 +2,13 @@
 <%= change_status_link(@ldap_setting) %>
 </div>
 
-<h2><%= link_to l(:label_ldap_servers), ldap_settings_path %> &#187; <%=h @ldap_setting.name %></h2>
+<h2><%= AuthSourceLdap.count > 1 ? link_to(l(:label_ldap_synchronization), ldap_settings_path) : l(:label_ldap_synchronization) %> &#187; <%=h @ldap_setting.name %>
+  <%= verdict_badge(@ldap_setting.active? ? l(:text_badge_active) : l(:text_badge_disabled), @ldap_setting.active? ? 'ok' : 'muted') %></h2>
 
-<%= labelled_form_for @ldap_setting, :html => {:class => 'tabular'} do |f| -%>
-
-  <%= render :partial => "ldap_settings", locals: {f: f} %>
-  <%= render :partial => "synchronization_actions", locals: {f: f}  %>
-  <%= submit_tag l(:button_save), :id => 'commit-save' %><br/>
-<% end -%>
-
-  <br/>
-  <%= render :partial => "test" %>
+<%= render_tabs [
+  {:name => 'settings', :partial => 'ldap_settings/settings_tab', :label => :label_settings},
+  {:name => 'test', :partial => 'ldap_settings/test', :label => :label_test}
+] %>
 
 <% html_title(l(:label_ldap_synchronization)) -%>
 

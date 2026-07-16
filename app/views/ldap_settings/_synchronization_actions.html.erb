@@ -1,6 +1,7 @@
-
-<h2><%= l(:label_synchronization_actions) %></h2>
-<div class="box tabular settings">
+<fieldset class="box ldap-card" id="ldap-card-users">
+  <legend><%= l(:label_user_plural) %></legend>
+  <p class="ldap-card-info"><em class="info"><%= l(:text_card_users_info) %></em></p>
+  <p><%= f.check_box :create_users %></p>
   <p><%= f.select :sync_on_login, options_for_sync_on_login %></p>
   <p><%= f.text_field :required_group %>
     <em class="info"><%= l(:text_required_group_info) %></em></p>
@@ -8,60 +9,70 @@
     <em class="info"><%= l(:text_admin_group_info) %></em></p>
   <p><%= f.text_field :fixed_group, :size => 15  %>
     <em class="info"><%= l(:text_fixed_group_info) %></em></p>
-  <p><%= f.check_box :create_users %></p>
+</fieldset>
+
+<fieldset class="box ldap-card" id="ldap-card-groups">
+  <legend><%= l(:label_group_plural) %></legend>
+  <p class="ldap-card-info"><em class="info"><%= l(:text_card_groups_info) %></em></p>
+  <p><%= f.text_field :groupname_pattern, :size => 50 %>
+    <em class="info"><%= l(:text_groupname_pattern_info) %></em></p>
+  <p><%= f.text_field :group_search_filter, :size => 50  %>
+    <em class="info"><%= l(:text_group_search_filter_info) %></em></p>
   <p><%= f.check_box :create_groups %></p>
   <p><%= f.select :dyngroups, options_for_dyngroups %>
     <span id="dyngroups-cache-ttl"><%= f.text_field :dyngroups_cache_ttl, :required => true, :size => 5 %> <%= l(:label_minutes) %></span>
   </p>
-  <fieldset class="box">
-    <legend><%= l(:field_user_group_fields) %></legend>
-    <div class="autoscroll">
-    <table class="list fields-user-group">
-    <thead>
-      <tr>
-        <th width="20%" align="left"></th>
-        <th width="15%" align="center" style="white-space:nowrap">
-          <%= link_to_function(image_tag('toggle_check.png'), "toggleCheckboxesBySelector('table.fields-user-group input.sync')",
-                                                              :title => "#{l(:button_check_all)}/#{l(:button_uncheck_all)}") %>
-          <%= l(:label_synchronize) %>
-        </th>
-        <th width="30%" align="center">
-          <%= l(:label_ldap_attribute) %>
-        </th>
-        <th align="center">
-          <%= l(:label_default_value) %>
-        </th>
+</fieldset>
+
+<fieldset class="box ldap-card" id="ldap-card-fields">
+  <legend><%= l(:field_user_group_fields) %></legend>
+  <p class="ldap-card-info"><em class="info"><%= l(:text_card_fields_info) %></em></p>
+  <div class="autoscroll">
+  <table class="list fields-user-group">
+  <thead>
+    <tr>
+      <th width="20%" align="left"></th>
+      <th width="15%" align="center" style="white-space:nowrap">
+        <%= link_to_function(image_tag('toggle_check.png'), "toggleCheckboxesBySelector('table.fields-user-group input.sync')",
+                                                            :title => "#{l(:button_check_all)}/#{l(:button_uncheck_all)}") %>
+        <%= l(:label_synchronize) %>
+      </th>
+      <th width="30%" align="center">
+        <%= l(:label_ldap_attribute) %>
+      </th>
+      <th align="center">
+        <%= l(:label_default_value) %>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    <% { :user => user_fields, :group => group_fields }.each do |k, fields| %>
+    <% if fields.any? -%>
+      <tr class="group open">
+        <td colspan="4">
+          <span class="expander icon icon-expanded" onclick="toggleRowGroup(this);"><%= respond_to?(:sprite_icon) ? sprite_icon('angle-down') : '&nbsp;'.html_safe %></span>
+          <%= l("label_#{k}") %>
+        </td>
       </tr>
-    </thead>
-    <tbody>
-      <% { :user => user_fields, :group => group_fields }.each do |k, fields| %>
-      <% if fields.any? -%>
-        <tr class="group open">
-          <td colspan="4">
-            <span class="expander icon icon-expanded" onclick="toggleRowGroup(this);"><%= respond_to?(:sprite_icon) ? sprite_icon('angle-down') : '&nbsp;'.html_safe %></span>
-            <%= l("label_#{k}") %>
-          </td>
-        </tr>
-        <% fields.each do |field| -%>
-        <tr class="<%= cycle('odd', 'even') %>">
-          <td>
-            <%=h field.name %> <%= content_tag('span', '*', :class => 'required') if field.required? %>
-          </td>
-          <td align="center">
-            <%= check_box_tag "#{k}_fields_to_sync[]", field.id, field.synchronize?, :class => 'sync' %>
-          </td>
-          <td align="center">
-            <%= text_field_tag "#{k}_ldap_attrs[#{field.id}]", field.ldap_attribute, :size => 12, :disabled => field.id.is_a?(String) %>
-          </td>
-          <td align="center">
-            <%=h field.default_value %>
-          </td>
-        </tr>
-        <% end -%>
+      <% fields.each do |field| -%>
+      <tr class="<%= cycle('odd', 'even') %>">
+        <td>
+          <%=h field.name %> <%= content_tag('span', '*', :class => 'required') if field.required? %>
+        </td>
+        <td align="center">
+          <%= check_box_tag "#{k}_fields_to_sync[]", field.id, field.synchronize?, :class => 'sync' %>
+        </td>
+        <td align="center">
+          <%= text_field_tag "#{k}_ldap_attrs[#{field.id}]", field.ldap_attribute, :size => 12, :disabled => field.id.is_a?(String) %>
+        </td>
+        <td align="center">
+          <%=h field.default_value %>
+        </td>
+      </tr>
       <% end -%>
-      <% end -%>
-    </tbody>
-    </table>
-    </div>
-  </fieldset>
-</div>
+    <% end -%>
+    <% end -%>
+  </tbody>
+  </table>
+  </div>
+</fieldset>

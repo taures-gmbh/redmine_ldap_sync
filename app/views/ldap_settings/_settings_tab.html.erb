@@ -1,0 +1,8 @@
+<%= labelled_form_for @ldap_setting, :html => {:class => 'tabular'} do |f| -%>
+  <%= error_messages_for 'ldap_setting' %>
+  <div class="ldap-settings-grid">
+    <%= render :partial => "ldap_settings", locals: {f: f} %>
+    <%= render :partial => "synchronization_actions", locals: {f: f} %>
+  </div>
+  <div class="projectino-controls"><%= submit_tag l(:button_save), :id => 'commit-save' %></div>
+<% end -%>

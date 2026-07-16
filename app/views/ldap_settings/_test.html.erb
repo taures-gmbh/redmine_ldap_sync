@@ -1,26 +1,46 @@
-
-<h2><%= l(:label_test) %></h2>
-<div class="box tabular settings">
+<div class="box tabular settings ldap-card" id="ldap-test-card">
   <%= form_tag({:controller => 'ldap_settings', :action => 'test'}, method: :put, :remote => true, :id => 'commit-test', :class => 'tabular' ) do %>
-  <div class="ldap-test-form-grid">
-    <div class="ldap-test-form-fields">
-      <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
-      <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
-      <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit', :class => 'commit-test-button') %>
-         <%= submit_tag(l(:button_test_all_users), :class => 'commit-test-button', :data => { :test_case => 'all_users' }) %>
-         <%= submit_tag(l(:button_test_all_groups), :class => 'commit-test-button', :data => { :test_case => 'all_groups' }) %></p>
-    </div>
-    <em class="info ldap-test-info"><%= l(:text_test_info) %></em>
+  <p class="ldap-card-info"><em class="info"><%= l(:text_test_info) %></em></p>
+  <div class="ldap-test-form-row">
+    <p><%= label_tag :test_users, l(:field_test_users) %><%= text_field_tag 'test_users', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
+    <p><%= label_tag :test_groups, l(:field_test_groups) %><%= text_field_tag 'test_groups', '', :size => 40, :placeholder => l(:text_test_placeholder) %></p>
+    <p><%= submit_tag(l(:button_execute), :id => 'commit-test-submit', :class => 'commit-test-button') %>
+       <%= submit_tag(l(:button_test_all_users), :class => 'commit-test-button', :data => { :test_case => 'all_users' }) %>
+       <%= submit_tag(l(:button_test_all_groups), :class => 'commit-test-button', :data => { :test_case => 'all_groups' }) %></p>
+  </div>
+
+  <div class="ldap-schema-fields ldap-test-lock">
+    <h4 class="ldap-subhead ldap-span"><%= l(:label_locked_detection) %></h4>
+    <p class="ldap-card-info ldap-span"><em class="info"><%= l(:text_locked_detection_live_info) %></em></p>
+    <p><label for="mirror_account_flags"><%= l(:field_account_flags) %></label>
+      <input type="text" id="mirror_account_flags" size="50"></p>
+    <p><label for="mirror_account_locked_test"><%= l(:field_account_locked_test) %></label>
+      <input type="text" id="mirror_account_locked_test" size="50"></p>
+    <details class="ldap-diff-more ldap-span">
+      <summary><%= l(:label_lock_examples) %></summary>
+      <table class="list ldap-diff">
+        <thead>
+          <tr>
+            <th><%= l(:label_lock_examples_directory) %></th>
+            <th><%= l(:field_account_flags) %></th>
+            <th><%= l(:field_account_locked_test) %></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Active Directory</td><td><code>userAccountControl</code></td><td><code>flags.to_i &amp; 2 != 0</code></td></tr>
+          <tr><td>Samba / Univention</td><td><code>sambaAcctFlags</code></td><td><code>flags.include?('D')</code></td></tr>
+          <tr><td>Univention (Kerberos)</td><td><code>krb5KDCFlags</code></td><td><code>flags.to_i == 254</code></td></tr>
+          <tr><td>FreeIPA / 389 Directory Server</td><td><code>nsAccountLock</code></td><td><code>flags.to_s.downcase == 'true'</code></td></tr>
+          <tr><td>OpenLDAP (ppolicy)</td><td><code>pwdAccountLockedTime</code></td><td><code>!flags.nil?</code></td></tr>
+          <tr><td>POSIX (shadowExpire)</td><td><code>shadowExpire</code></td><td><code>flags.to_i > 0 &amp;&amp; flags.to_i <= Time.now.to_i / 86400</code></td></tr>
+        </tbody>
+      </table>
+    </details>
   </div>
   <% end %>
 
-
   <div class="autoscroll">
-  <fieldset>
-    <legend><%=l(:label_result)%></legend>
-
-      <div id="test-result" data-loading="<%= l(:label_loading) %>" data-error="<%= l(:text_test_request_failed) %>"><%=l :label_not_executed %></div>
-  </fieldset>
+    <div class="ldap-result-label"><%= l(:label_result) %></div>
+    <div id="test-result" data-loading="<%= l(:label_loading) %>" data-error="<%= l(:text_test_request_failed) %>"><%=l :label_not_executed %></div>
   </div>
-  
 </div>

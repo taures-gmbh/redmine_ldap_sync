@@ -1,48 +1,43 @@
+<fieldset class="box ldap-card" id="ldap-schema">
+  <legend><%= l(:label_ldap_schema) %></legend>
+  <div class="ldap-schema-fields">
+    <p class="ldap-card-info ldap-span"><em class="info"><%= l(:text_ldap_schema_info) %></em></p>
+    <p><%= label_tag :base_settings, l(:field_base_settings) %>
+      <%=  select_tag :base_settings, options_for_base_settings %></p>
+    <p><%= f.text_field :groups_base_dn, :size => 50 %>
+      <em class="info"><%= l(:text_groups_base_dn_info) %></em></p>
+    <p><%= f.text_field :class_user, :required => true, :size => 15 %></p>
+    <p><%= f.select :users_search_scope, options_for_users_search_scope %></p>
+    <p><%= f.text_field :class_group, :required => true, :size => 15 %></p>
+    <p><%= f.select :group_membership, options_for_group_membeship %></p>
+    <p><%= f.select :nested_groups, options_for_nested_groups %></p>
+    <h4 class="ldap-subhead ldap-span"><%= l(:label_attribute_plural) %></h4>
+    <div id="ldap_attributes" class="ldap-schema-fields ldap-span">
+      <p><%= f.text_field :groupname, :required => true, :size => 15 %></p>
+      <p><%= f.text_field :primary_group, :size => 15 %></p>
 
-<%= error_messages_for 'ldap_setting' %>
-<h2><%= l(:label_ldap_settings) %></h2>
-<div class="box tabular settings">
-  <p><%= label_tag :base_settings, l(:field_base_settings) %>
-    <%=  select_tag :base_settings, options_for_base_settings %></p>
-  <p><%= f.text_field :groups_base_dn, :size => 50 %>
-    <em class="info"><%= l(:text_groups_base_dn_info) %></em></p>
-  <p><%= f.text_field :class_user, :required => true, :size => 15 %></p>
-  <p><%= f.select :users_search_scope, options_for_users_search_scope %></p>
-  <p><%= f.text_field :class_group, :required => true, :size => 15 %></p>
-  <p><%= f.text_field :groupname_pattern, :size => 50 %>
-    <em class="info"><%= l(:text_groupname_pattern_info) %></em></p>
-  <p><%= f.text_field :group_search_filter, :size => 50  %>
-    <em class="info"><%= l(:text_group_search_filter_info) %></em></p>
+      <div class="membership on_groups" style="display:none;">
+        <p><%= f.text_field :member, :required => true, :size => 15 %></p>
+        <p><%= f.text_field :user_memberid, :required => true, :size => 15%></p>
+      </div>
+      <div class="membership on_members" style="display:none;">
+        <p><%= f.text_field :user_groups, :required => true, :size => 15 %></p>
+        <p><%= f.text_field :groupid, :required => true, :size => 15 %></p>
+      </div>
 
-  <p><%= f.text_field :account_locked_test, :size => 50 %>
-    <em class="info"><%= l(:text_account_locked_test_info) %></em></p>
-  <p><%= f.select :group_membership, options_for_group_membeship %></p>
-  <p><%= f.select :nested_groups, options_for_nested_groups %></p>
+      <div class="nested on_members" style="display:none;">
+        <p><%= f.text_field :parent_group, :required => true, :size => 15 %></p>
+        <p><%= f.text_field :group_parentid, :required => true, :size => 15 %></p>
+      </div>
 
-  <fieldset class="box" id="ldap_attributes">
-    <legend><%=l(:label_attribute_plural)%></legend>
-
-    <p><%= f.text_field :groupname, :required => true, :size => 15 %></p>
+      <div class="nested on_parents" style="display:none;">
+        <p><%= f.text_field :member_group, :required => true, :size => 15 %></p>
+        <p><%= f.text_field :group_memberid, :required => true, :size => 15 %></p>
+      </div>
+    </div>
+    <h4 class="ldap-subhead ldap-span"><%= l(:label_locked_detection) %></h4>
+    <p class="ldap-card-info ldap-span"><em class="info"><%= l(:text_locked_detection_info) %></em></p>
     <p><%= f.text_field :account_flags, :size => 50 %></p>
-    <p><%= f.text_field :primary_group, :size => 15 %></p>
-
-    <div class="membership on_groups" style="display:none;">
-      <p><%= f.text_field :member, :required => true, :size => 15 %></p>
-      <p><%= f.text_field :user_memberid, :required => true, :size => 15%></p>
-    </div>
-    <div class="membership on_members" style="display:none;">
-      <p><%= f.text_field :user_groups, :required => true, :size => 15 %></p>
-      <p><%= f.text_field :groupid, :required => true, :size => 15 %></p>
-    </div>
-
-    <div class="nested on_members" style="display:none;">
-      <p><%= f.text_field :parent_group, :required => true, :size => 15 %></p>
-      <p><%= f.text_field :group_parentid, :required => true, :size => 15 %></p>
-    </div>
-
-    <div class="nested on_parents" style="display:none;">
-      <p><%= f.text_field :member_group, :required => true, :size => 15 %></p>
-      <p><%= f.text_field :group_memberid, :required => true, :size => 15 %></p>
-    </div>
-  </fieldset>
-</div>
+    <p><%= f.text_field :account_locked_test, :size => 50 %></p>
+  </div>
+</fieldset>

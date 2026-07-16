@@ -109,8 +109,11 @@ module LdapSync::Infectors::User
     end
     receiver.class_eval do
       class << self
-        alias_method :try_to_login_without_ldap_sync, :try_to_login!
-        alias_method :try_to_login!, :try_to_login_with_ldap_sync
+        # Redmine >= 5.1 authenticates via try_to_login! (try_to_login is a
+        # thin wrapper around it); older versions only have try_to_login
+        login_method = method_defined?(:try_to_login!) ? :try_to_login! : :try_to_login
+        alias_method :try_to_login_without_ldap_sync, login_method
+        alias_method login_method, :try_to_login_with_ldap_sync
       end
     end
   end

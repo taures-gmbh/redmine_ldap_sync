@@ -408,9 +408,9 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     actual, $stdout = $stdout.string, old_stdout
 
     # With create_groups off, every LDAP group missing from Redmine lands in the
-    # "not produced" bucket. NB the message calls these "already created", which
-    # is misleading — they are precisely the ones that were not created.
-    assert_include 'already created', actual
+    # bucket for groups that could not be produced.
+    assert_include 'not created', actual
+    assert_not_include 'already created', actual
   end
 
   test "#sync_users should sync with dynamic groups" do

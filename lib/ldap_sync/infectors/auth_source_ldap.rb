@@ -438,7 +438,12 @@ module LdapSync::Infectors::AuthSourceLdap
         chg = []
         chg << "#{pluralize(a, 'group')} added (#{added_names.join(', ')})" if a > 0
         chg << "#{pluralize(d, a == 0 ? 'group' : nil)} deleted (#{deleted_names.join(', ')})" if d > 0
-        chg << "#{pluralize(nc, a + d == 0 ? 'group' : nil)} already created (#{ nc_names.to_a.join(', ') })" if nc > 0
+        # nc is the groups find_or_create_group could NOT produce: either
+        # create_groups is off and the group does not exist in Redmine, or the
+        # create failed validation. This used to read "already created", which
+        # states the opposite of what happened. The failure itself is reported
+        # separately by find_or_create_group at :change level.
+        chg << "#{pluralize(nc, a + d == 0 ? 'group' : nil)} not created (#{ nc_names.to_a.join(', ') })" if nc > 0
 
         msg = if chg.size == 1
           "   -> #{chg[0]}"

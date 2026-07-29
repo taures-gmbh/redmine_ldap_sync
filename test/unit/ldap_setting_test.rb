@@ -52,6 +52,19 @@ class LdapSettingTest < ActiveSupport::TestCase
     assert Setting.plugin_redmine_ldap_sync[auth_source.id]['user_groups']
   end
 
+  def test_should_strip_frozen_ldap_attributes
+    # strip! on a frozen value raises FrozenError, which is what a string literal
+    # will be once Ruby freezes them by default; 3.4 already warns.
+    @ldap_setting.safe_attributes = {
+      'groupname' => ' cn '.freeze,
+      'class_group' => ' group '.freeze,
+      'class_user' => ' user '.freeze
+    }
+
+    assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')
+    assert_equal 'cn', LdapSetting.find_by_auth_source_ldap_id(@auth_source.id).groupname
+  end
+
   def test_should_strip_ldap_attributes
     @ldap_setting.safe_attributes = {
       'groupname' => ' cn ',

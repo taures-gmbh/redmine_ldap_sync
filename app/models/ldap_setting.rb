@@ -350,9 +350,13 @@ class LdapSetting
       self.group_ldap_attrs ||= {}
     end
 
+    # Replace rather than strip! in place: a frozen value - a literal under Ruby's
+    # coming frozen-string-literal default, or anything a caller froze - raises
+    # FrozenError on strip!. Ruby 3.4 already warns here on every validation.
     def strip_names
-      LDAP_ATTRIBUTES.each {|a| @attributes[a].strip! unless @attributes[a].nil? }
-      CLASS_NAMES.each {|a| @attributes[a].strip! unless @attributes[a].nil? }
+      (LDAP_ATTRIBUTES + CLASS_NAMES).each do |a|
+        @attributes[a] = @attributes[a].strip unless @attributes[a].nil?
+      end
     end
 
     def attributes

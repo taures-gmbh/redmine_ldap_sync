@@ -15,7 +15,7 @@ forks, and is actively kept working on current Redmine.
 and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
 Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
-Current version: **2.7.1** — see [What's new](#whats-new-in-this-fork).
+Current version: **2.8.0** — see [What's new](#whats-new-in-this-fork).
 
 Features
 --------
@@ -43,7 +43,30 @@ Features
 What's new in this fork
 -----------------------
 
-Recent releases turned the admin page from a form-plus-text-dump into a
+**v2.8.0** — correctness and coverage rather than UI. The test suite had been
+unrunnable since it targeted Redmine 3.x; getting it going again is what surfaced
+most of this:
+
+* **Dynamic groups are synchronised by scheduled runs again.** The freshness test
+  was inverted, which made the cache refresh unreachable in any rake or worker
+  process — it would only refresh if it had already refreshed. Scheduled syncs
+  served an empty or stale dynlist cache. If you use `slapo-dynlist`, this is the
+  one to care about.
+* **"email already taken by ‹owner›" is reported again.** The check used
+  `errors.added?`, which has matched error options strictly since Rails 6.1 and so
+  always returned false, leaving only the generic "Email has already been taken".
+* **Ready for Rails 8.2**, which removes `String#mb_chars` (30 call sites). The
+  plugin loaded on Redmine 7.0 but would have broken on the following Rails.
+* **The sync log says "not created"** for groups that could not be created; it
+  previously said "already created", the opposite of what happened.
+* **Batch output can go to a logger** — set `AuthSourceLdap.trace_sink` to a
+  callable instead of having the change log `puts` to stdout. Useful when the sync
+  runs from a long-lived worker rather than a rake task. Unset, nothing changes.
+* **Tests and CI** — 140 tests, green on Redmine 5.1/6.0/6.1/7.0, run on every
+  push. Includes a fix for an order-dependent suite that failed 0-18 tests
+  depending on the random seed.
+
+Earlier releases turned the admin page from a form-plus-text-dump into a
 tabbed, self-explaining tool. Highlights:
 
 * **Redmine 6.x compatibility** — the `SortedSet` dependency was dropped so the

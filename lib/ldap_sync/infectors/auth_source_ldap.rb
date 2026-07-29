@@ -96,12 +96,20 @@ module LdapSync::Infectors::AuthSourceLdap
         end
 
         ldap_users[:enabled].each do |login|
-          user, is_new_user = find_or_create_user(login)
-          sync_user(user, is_new_user) if user.present?
+          with_user_isolation(login) do
+            user, is_new_user = find_or_create_user(login)
+            sync_user(user, is_new_user) if user.present?
+          end
         end
       end
 
       update_closure_cache! if setting.nested_groups_enabled?
+
+      if @failed_logins.present?
+        error "#{pluralize(@failed_logins.size, 'user')} failed to synchronize: " \
+              "#{@failed_logins.join(', ')}"
+      end
+      @failed_logins ||= []
     end
 
     # Synchronizes one login exactly like a full sync run would: creates the
@@ -154,6 +162,27 @@ module LdapSync::Infectors::AuthSourceLdap
     end
 
     private
+      # One user must not take the whole run down with it. A single unexpected
+      # error - a validation that raises instead of returning false, a directory
+      # entry the code was not written for - used to abort sync_users outright:
+      # every login after it went unsynchronised, and update_closure_cache! never
+      # ran, so the nested-groups cache was left half-written for the next run to
+      # read. The failures are collected and reported together at the end.
+      #
+      # Net::LDAP errors are NOT caught: if the directory or the connection is
+      # gone, the rest of the run is meaningless and continuing would look like
+      # every remaining user had vanished from LDAP.
+      def with_user_isolation(login)
+        @failed_logins ||= []
+        yield
+      rescue Net::LDAP::Error
+        raise
+      rescue StandardError => e
+        @failed_logins << login
+        error "Failed to synchronize user '#{login}': #{e.class}: #{e.message}"
+        logger.error("ldap_sync: #{e.class}: #{e.message}\n  #{e.backtrace&.first(10)&.join("\n  ")}") if logger
+      end
+
       def create_and_sync_group(group_data, attr_groupname)
         groupname = group_data[attr_groupname].first
         return unless setting.groupname_regexp =~ groupname

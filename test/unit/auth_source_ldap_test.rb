@@ -394,6 +394,36 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     # test_group_that_cannot_be_created_is_reported covers that bucket instead.
   end
 
+  test "#sync_users should carry on after one user fails and report it" do
+    boom = 'loadgeek'
+    @auth_source.stubs(:sync_user).with {|user, *| user.login == boom }.raises(RuntimeError, 'kaboom')
+    @auth_source.stubs(:sync_user).with {|user, *| user.login != boom }.returns(true)
+
+    old_stdout, $stdout = $stdout, StringIO.new
+    AuthSourceLdap.running_rake!
+    AuthSourceLdap.trace_level = :change
+
+    # must not raise: one bad user used to abort the whole run
+    @auth_source.sync_users
+
+    actual, $stdout = $stdout.string, old_stdout
+
+    # the login is reported as LDAP spells it (LoadGeek), not as Redmine stores it
+    assert_match /Failed to synchronize user '#{boom}'/i, actual
+    assert_include 'kaboom', actual
+    assert_include '1 user failed to synchronize', actual
+    # the users after it still got created
+    assert User.find_by_login('systemhack'), 'the run should have continued'
+  end
+
+  test "#sync_users should give up when the directory itself fails" do
+    # An LDAP failure is not a per-user problem: continuing would treat every
+    # remaining user as missing from the directory.
+    @auth_source.stubs(:find_or_create_user).raises(Net::LDAP::Error, 'connection reset')
+
+    assert_raises(Net::LDAP::Error) { @auth_source.sync_users }
+  end
+
   test "#sync_groups should not disguise an error from its own code as an LDAP error" do
     # ldap_search used to wrap the whole method in `rescue => exception` and re-raise
     # everything as Net::LDAP::Error("LDAP Error(0): Success") — including anything

@@ -29,6 +29,15 @@ all removed in Selenium 4 / Capybara 3. Reviving those seven tests means porting
 them to Redmine 6's own system-test harness.
 
 
+Continuous integration
+======================
+
+.github/workflows/test.yml runs the same two scripts against every supported
+Redmine (a job per minor version, pristine image as the job container, MySQL as a
+service). CI and local runs therefore cannot drift: if it passes here it passes
+there, and a failure reproduces with script/test-docker.sh.
+
+
 The test LDAP directory
 =======================
 

@@ -1,0 +1,64 @@
+name: test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: redmine ${{ matrix.redmine }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Minor tags, so a new patch release is picked up without editing this.
+        redmine: ['5.1', '6.0', '6.1', '7.0']
+
+    # A pristine Redmine is the environment under test — deliberately not a
+    # customised image. slapd runs inside this same container because the auth
+    # source fixtures hardcode 127.0.0.1:3389 (and use 127.0.0.2 as a host that
+    # must not answer), so a service container cannot stand in for it.
+    container:
+      image: redmine:${{ matrix.redmine }}
+      options: --user root
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: redmine_test
+          MYSQL_USER: redmine
+          MYSQL_PASSWORD: redmine
+        options: >-
+          --health-cmd="mysqladmin ping -uredmine -predmine --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: Install git for actions/checkout
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq git
+
+      - uses: actions/checkout@v4
+        with:
+          path: redmine_ldap_sync
+
+      - name: Mount the checkout as a Redmine plugin
+        run: ln -s "$GITHUB_WORKSPACE/redmine_ldap_sync" /usr/src/redmine/plugins/redmine_ldap_sync
+
+      - name: Prepare (slapd, gems, database, migrations)
+        env:
+          DB_HOST: mysql
+        run: /usr/src/redmine/plugins/redmine_ldap_sync/script/test-setup.sh
+
+      - name: Run the suite
+        run: /usr/src/redmine/plugins/redmine_ldap_sync/script/test-run.sh
+
+      - name: slapd log on failure
+        if: failure()
+        run: tail -100 /tmp/ldapsync-ldap/slapd.log || true

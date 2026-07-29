@@ -334,12 +334,28 @@ module LdapSync::EntityManager
       options[:attributes] = [attrs]
 
       block = Proc.new {|e| yield e[attrs] } if block_given?
-      result = ldap.search(options, &block) or fail
-      result ||= [] unless block_given?
+      result = ldap.search(options, &block)
+      # net-ldap answers nil when the operation itself failed. This replaces a bare
+      # `or fail`, whose RuntimeError the rescue below then relabelled; the check has
+      # to cover the block form too — that is how a search with an unusable base DN
+      # is reported (ldap_test_test asserts exactly that).
+      raise Net::LDAP::Error, ldap_error_message(ldap) if result.nil?
+
       result.map {|e| e[attrs] } unless block_given?
-    rescue => exception
+    rescue Net::LDAP::Error, Net::LDAP::ResponseMissingOrInvalidError, Net::LDAP::ConnectionError => exception
+      # Report what the directory said, but keep the original — the class and
+      # backtrace are the only clue when net-ldap raises from inside its own stack.
+      raise exception.class, "#{ldap_error_message(ldap)} (#{exception.message})"
+    end
+
+    # Anything raised inside the caller's block used to be caught here too and
+    # rewritten as "LDAP Error(0): Success" — so a NoMethodError or a failing
+    # group.save in create_and_sync_group was reported as a directory failure,
+    # with its class and backtrace thrown away. Only LDAP errors are translated
+    # now; everything else propagates untouched.
+    def ldap_error_message(ldap)
       os = ldap.get_operation_result
-      raise Net::LDAP::Error, "LDAP Error(#{os.code}): #{os.message}"
+      "LDAP Error(#{os.code}): #{os.message}"
     end
 
     def n(field)

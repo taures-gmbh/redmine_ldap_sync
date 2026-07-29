@@ -394,6 +394,18 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     # test_group_that_cannot_be_created_is_reported covers that bucket instead.
   end
 
+  test "#sync_groups should not disguise an error from its own code as an LDAP error" do
+    # ldap_search used to wrap the whole method in `rescue => exception` and re-raise
+    # everything as Net::LDAP::Error("LDAP Error(0): Success") — including anything
+    # raised inside the caller's block, which is where the real work happens. A
+    # NoMethodError in create_and_sync_group, or a failing group.save, was reported
+    # as a directory failure with the class and backtrace discarded.
+    @auth_source.stubs(:create_and_sync_group).raises(ArgumentError, 'not an LDAP problem')
+
+    error = assert_raises(ArgumentError) { @auth_source.sync_groups }
+    assert_equal 'not an LDAP problem', error.message
+  end
+
   test "#sync_users should send output to trace_sink instead of stdout when set" do
     @ldap_setting.fixed_group = nil
     assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')

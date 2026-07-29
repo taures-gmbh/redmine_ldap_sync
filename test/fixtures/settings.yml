@@ -1,6 +1,6 @@
 redmine_ldap_setting:
   name: plugin_redmine_ldap_sync
-  updated_on: <%= Time.now.to_s(:db) %>
+  updated_on: <%= Time.now.utc.strftime('%Y-%m-%d %H:%M:%S') %>
   value: |
     --- !ruby/hash:ActiveSupport::HashWithIndifferentAccess
     1: !ruby/hash:ActiveSupport::HashWithIndifferentAccess

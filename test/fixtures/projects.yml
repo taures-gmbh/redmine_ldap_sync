@@ -8,6 +8,10 @@ ldap_sync_project:
   homepage: https://github.com/thorin/redmine_ldap_sync
   is_public: true
   identifier: ldap_sync
+  status: 1
+  parent_id:
+  lft: 1
+  rgt: 2
 redmine_project:
   created_on: 2011-07-19 19:13:59 +02:01
   name: Redmine
@@ -17,3 +21,7 @@ redmine_project:
   homepage: https://github.com/redmine/redmine
   is_public: true
   identifier: redmine
+  status: 1
+  parent_id:
+  lft: 3
+  rgt: 4

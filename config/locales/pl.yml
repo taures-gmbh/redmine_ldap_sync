@@ -11,7 +11,6 @@ pl:
   label_minutes: "minuty"
 
   label_not_executed: "Nie uruchomione"
-  label_no_fields: "Brak pól"
   label_not_found: "Nie znaleziono"
   label_users_enabled: "Włączeni użytkownicy"
   label_a_total_of: "łącznie %{count}"

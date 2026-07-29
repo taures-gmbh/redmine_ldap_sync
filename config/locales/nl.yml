@@ -11,7 +11,6 @@ nl:
   label_minutes: "minuten"
 
   label_not_executed: "Niet uitgevoerd"
-  label_no_fields: "Geen velden"
   label_not_found: "Niet gevonden"
   label_users_enabled: "Ingeschakelde gebruikers"
   label_a_total_of: "een totaal van %{count}"

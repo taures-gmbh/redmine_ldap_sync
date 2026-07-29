@@ -11,7 +11,6 @@ ru:
   label_minutes: "минут"
 
   label_not_executed: "Не выполнялась"
-  label_no_fields: "Нет полей"
   label_not_found: "Не найден"
   label_users_enabled: "пользователей разблокировано"
   label_a_total_of: "Всего %{count}"

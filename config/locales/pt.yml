@@ -11,7 +11,6 @@ pt:
   label_minutes: "minutos"
 
   label_not_executed: "Não executado"
-  label_no_fields: "Sem dados"
   label_not_found: "Não encontrado"
   label_users_enabled: "Utilizadores activos"
   label_a_total_of: "no total de %{count}"

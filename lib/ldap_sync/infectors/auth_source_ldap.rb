@@ -63,19 +63,22 @@ module LdapSync::Infectors::AuthSourceLdap
 #      with_ldap_connection do |_|
       with_ldap_connection do |ldap|
         ldap_users[:locked].each do |login|
-          user = self.users.where("LOWER(login) = ?", login.downcase).first
+          # One lookup: this used to query for the user, then look the same login up
+          # again through find_local_user before syncing it.
+          user, = find_local_user(login)
+          next if user.nil?
 
-          if user.try(:active?)
+          if user.active?
             if user.lock!
               change user.login, "-- Locked active user '#{user.login}' (#{user.name})"
             else
               change user.login, "-- Failed to lock active user '#{user.login}'"
             end
-          elsif user.present?
+          else
             trace "-- Not locking locked user '#{user.login}'"
           end
-          user, = find_local_user(login)
-          sync_user(user, false, :locked => true) if user.present?
+
+          sync_user(user, false, :locked => true)
         end
 
         ldap_users[:deleted].each do |login|

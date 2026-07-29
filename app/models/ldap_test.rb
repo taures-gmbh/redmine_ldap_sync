@@ -122,8 +122,15 @@ class LdapTest
         dynamic_groups.reject! {|(k, v)| k !~ /#{setting.groupname_pattern}/ } if setting.has_groupname_pattern?
       end
     end
-  rescue Exception => e
-    error(e.message + e.backtrace.join("\n  "))
+  # StandardError plus ScriptError, not Exception: a signal or Interrupt during a
+  # long run must not be swallowed and rendered as a result. ScriptError has to stay
+  # in, though — the test tab evaluates UNSAVED settings, so an invalid
+  # account_locked_test reaches eval here and raises SyntaxError, which is a
+  # ScriptError. The backtrace goes to the log; the administrator gets the message.
+  rescue StandardError, ScriptError => e
+    error "#{e.class}: #{e.message}"
+    Rails.logger.error("ldap_sync test: #{e.class}: #{e.message}\n  " +
+                       e.backtrace.to_a.first(15).join("\n  "))
   end
 
   # Whether the diff for a user contains anything a sync run would change
@@ -173,8 +180,15 @@ class LdapTest
 
       user_changes[:deleted].each {|login| (users_status[:would_archive] ||= []) << login }
     end
-  rescue Exception => e
-    error(e.message + e.backtrace.join("\n  "))
+  # StandardError plus ScriptError, not Exception: a signal or Interrupt during a
+  # long run must not be swallowed and rendered as a result. ScriptError has to stay
+  # in, though — the test tab evaluates UNSAVED settings, so an invalid
+  # account_locked_test reaches eval here and raises SyntaxError, which is a
+  # ScriptError. The backtrace goes to the log; the administrator gets the message.
+  rescue StandardError, ScriptError => e
+    error "#{e.class}: #{e.message}"
+    Rails.logger.error("ldap_sync test: #{e.class}: #{e.message}\n  " +
+                       e.backtrace.to_a.first(15).join("\n  "))
   end
 
   # Full LDAP <-> Redmine diff over all groups, bucketed by what a
@@ -209,8 +223,15 @@ class LdapTest
         (groups_status[:only_in_redmine] ||= []) << name
       end
     end
-  rescue Exception => e
-    error(e.message + e.backtrace.join("\n  "))
+  # StandardError plus ScriptError, not Exception: a signal or Interrupt during a
+  # long run must not be swallowed and rendered as a result. ScriptError has to stay
+  # in, though — the test tab evaluates UNSAVED settings, so an invalid
+  # account_locked_test reaches eval here and raises SyntaxError, which is a
+  # ScriptError. The backtrace goes to the log; the administrator gets the message.
+  rescue StandardError, ScriptError => e
+    error "#{e.class}: #{e.message}"
+    Rails.logger.error("ldap_sync test: #{e.class}: #{e.message}\n  " +
+                       e.backtrace.to_a.first(15).join("\n  "))
   end
 
   def self.human_attribute_name(attr, *args)

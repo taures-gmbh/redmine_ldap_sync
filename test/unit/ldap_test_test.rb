@@ -206,12 +206,20 @@ class LdapTestTest < ActiveSupport::TestCase
     assert_match /active, .* locked .* deleted/, @ldap_test.messages
   end
 
-  def test_error_case
+  def test_an_unparseable_lock_condition_should_be_reported_without_a_backtrace
+    # The test tab evaluates unsaved settings, so an expression the form would have
+    # refused still reaches eval — and raises SyntaxError, which is a ScriptError.
     @ldap_setting.account_locked_test = "flags.include? [disabled]'"
 
     @ldap_test.run_with_users_and_groups([], [])
 
-    assert_match /ldap_test\.rb/, @ldap_test.messages, "Should throw an error"
+    # This used to assert /ldap_test\.rb/ — that the run dumped a Ruby backtrace
+    # into the box the administrator reads. The error is reported; the backtrace
+    # belongs in the log.
+    assert_match /SyntaxError/, @ldap_test.messages
+    assert_no_match /ldap_test\.rb/, @ldap_test.messages
+    assert @ldap_test.trace_errors.any? {|m| m =~ /SyntaxError/ },
+           'the error should be surfaced prominently, not just logged'
   end
 
   def test_should_filter_the_list_of_groups_with_the_groupname_pattern

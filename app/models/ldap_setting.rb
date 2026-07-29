@@ -275,18 +275,27 @@ class LdapSetting
 
   protected
 
+    # The lock condition is a Ruby expression typed by an administrator and eval'd
+    # against the LDAP flags. Only an administrator can reach this form, and this
+    # validation is what keeps an unparseable expression from being saved.
+    #
+    # ScriptError is in the rescue on purpose — eval raises SyntaxError for a
+    # malformed expression, and SyntaxError descends from ScriptError, not from
+    # StandardError. Exception is too wide: it also swallows Interrupt.
     def validate_account_locked_test
       if account_locked_test.present?
         eval "lambda { |flags| #{account_locked_test} }"
       end
-    rescue Exception => e
+    rescue StandardError, ScriptError => e
       errors.add :account_locked_test, :invalid_expression, :error_message => e.message.gsub(/^(\(eval\):1: )?(.*?)(lambda.*|$)/m, '\2')
-      Rails.logger.error "#{e.message}\n #{e.backtrace.join("\n ")}"
+      # No backtrace: it points into this validation, not at anything wrong with
+      # the application, and the message is already shown on the form.
+      Rails.logger.info "ldap_sync: rejected account_locked_test: #{e.message}"
     end
 
     def validate_groupname_pattern
       /#{groupname_pattern}/ if groupname_pattern.present?
-    rescue Exception => e
+    rescue StandardError => e
       errors.add :groupname_pattern, :invalid_regexp, :error_message => e.message
     end
 

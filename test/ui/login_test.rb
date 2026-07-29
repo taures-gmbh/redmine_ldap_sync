@@ -1,4 +1,4 @@
-﻿# encoding: utf-8
+# encoding: utf-8
 # Copyright (C) 2011-2013  The Redmine LDAP Sync Authors
 #
 # This file is part of Redmine LDAP Sync.
@@ -17,56 +17,57 @@
 # along with Redmine LDAP Sync.  If not, see <http://www.gnu.org/licenses/>.
 require File.expand_path('../base', __FILE__)
 
-if RUBY_VERSION >= '2.0.0'
-  require 'simplecov'
-  SimpleCov.command_name 'UI Tests'
-end
-
-class Redmine::UiTest::LoginTest < Redmine::UiTest::Base
-  fixtures :auth_sources, :users, :settings, :custom_fields, :roles, :projects, :members, :member_roles
-  fixtures :email_addresses if Redmine::VERSION::MAJOR >= 3
-
-  setup do
-    visit '/login'
-  end
-
+# On-login synchronization, end to end through a browser. These drive Redmine's
+# own login and registration pages, so unlike the settings-page tests they are
+# unaffected by this plugin's UI.
+class LdapSync::LoginTest < LdapSync::UiTestCase
   def test_login_with_existing_user
-    within '#login-form' do
-      fill_in 'Login', :with => 'loadgeek'
-      fill_in 'Password', :with => 'password'
-      click_on 'Login'
-    end
-    assert_equal my_page_path, current_path
+    login_as 'loadgeek'
+
+    assert_current_path '/my/page', :ignore_query => true
   end
 
-  def test_login_with_new_user
-    within '#login-form' do
-      fill_in 'Login', :with => 'systemhack'
-      fill_in 'Password', :with => 'password'
-      click_on 'Login'
-    end
-    assert_equal my_page_path, current_path
+  def test_login_should_create_the_user_on_the_fly
+    assert_nil User.find_by_login('systemhack')
+
+    login_as 'systemhack'
+
+    assert_current_path '/my/page', :ignore_query => true
+    user = User.find_by_login('systemhack')
+    assert user, 'the user should have been created from LDAP'
+    assert_equal 'Darryl', user.firstname
   end
 
-  def test_login_with_incomplete_user
-    within '#login-form' do
-      fill_in 'Login', :with => 'incomplete'
-      fill_in 'Password', :with => 'password'
-      click_on 'Login'
-    end
+  def test_login_with_a_user_incomplete_on_ldap_should_ask_for_the_missing_fields
+    assert_nil User.find_by_login('incomplete')
 
-    assert_selector 'h2', :text => /Register/
+    login_as 'incomplete'
 
-    fill_in 'First name', :with => 'Incomplete'
-    fill_in 'Last name', :with => 'User'
-    fill_in 'Email', :with => 'incomplete@fakemail.com'
-    select 'Nederlands', :from => 'Language'
+    # LDAP authenticates the user, but its entry has no mail and no first name,
+    # so Redmine cannot save it and falls back to the registration form.
+    assert_selector 'h2', :text => /Register/i
+    assert_nil User.find_by_login('incomplete')
 
-    click_on 'Submit'
+    fill_in 'user[firstname]', :with => 'Incomplete'
+    fill_in 'user[lastname]',  :with => 'User'
+    fill_in 'user[mail]',      :with => 'incomplete@fakemail.com'
+    find('input[name=commit]').click
 
-    assert_equal my_account_path, current_path
-
-    assert User.find_by_login('incomplete')
+    assert_current_path '/my/account', :ignore_query => true
+    user = User.find_by_login('incomplete')
+    assert user, 'the user should exist after completing the form'
+    assert_equal 'incomplete@fakemail.com', user.mail
   end
 
+  private
+    # Deliberately not Redmine's log_user: that asserts the browser lands on
+    # /my/page, which is exactly what the incomplete-user case must not do.
+    def login_as(login, password = 'password')
+      visit '/login'
+      within '#login-form form' do
+        fill_in 'username', :with => login
+        fill_in 'password', :with => password
+        find('input[name=login]').click
+      end
+    end
 end

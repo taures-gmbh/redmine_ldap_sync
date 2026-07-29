@@ -52,7 +52,10 @@ up() {
     echo -n .; sleep 2
   done
 
-  docker exec "$APP" bash /usr/src/redmine/plugins/redmine_ldap_sync/script/test-setup.sh
+  # WITH_BROWSER=1 script/test-docker.sh up  prepares a container that can also run
+  # the browser tests (script/test-run.sh test/ui)
+  docker exec ${WITH_BROWSER:+-e WITH_BROWSER="$WITH_BROWSER"} "$APP" \
+    bash /usr/src/redmine/plugins/redmine_ldap_sync/script/test-setup.sh
 }
 
 case "${1:-}" in

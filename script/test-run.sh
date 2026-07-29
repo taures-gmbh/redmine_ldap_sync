@@ -20,6 +20,13 @@ export BUNDLE_APP_CONFIG="${BUNDLE_APP_CONFIG_DIR:-/tmp/ldapsync-bundle}"
 
 cd "$REDMINE_DIR"
 
+# The browser tests need chromium (WITH_BROWSER=1 script/test-setup.sh) and are
+# opt-in by path: script/test-run.sh test/ui. Running them headless as root needs
+# --no-sandbox; Redmine's harness reads GOOGLE_CHROME_OPTS_ARGS.
+export CHROME_BIN="${CHROME_BIN:-$(command -v chromium || true)}"
+export CHROMEDRIVER_BIN="${CHROMEDRIVER_BIN:-$(command -v chromedriver || true)}"
+export GOOGLE_CHROME_OPTS_ARGS="${GOOGLE_CHROME_OPTS_ARGS:---headless=new,--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--window-size=1024,900}"
+
 # SEED=n reproduces a specific run order (minitest randomises per run).
 if [ $# -eq 0 ]; then
   if [ -n "${SEED:-}" ]; then

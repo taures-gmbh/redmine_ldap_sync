@@ -62,3 +62,69 @@ jobs:
       - name: slapd log on failure
         if: failure()
         run: tail -100 /tmp/ldapsync-ldap/slapd.log || true
+
+  # The browser tests are a separate job on a single Redmine: they need chromium
+  # (~200 MB of packages) and drive a real browser, so running them across the whole
+  # matrix would multiply that for little extra signal — the JS they exercise does
+  # not vary by Redmine version.
+  ui:
+    name: browser tests (redmine ${{ matrix.redmine }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        redmine: ['6.1']
+
+    container:
+      image: redmine:${{ matrix.redmine }}
+      options: --user root
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: redmine_test
+          MYSQL_USER: redmine
+          MYSQL_PASSWORD: redmine
+        options: >-
+          --health-cmd="mysqladmin ping -uredmine -predmine --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    steps:
+      - name: Install git for actions/checkout
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq git
+
+      - uses: actions/checkout@v4
+        with:
+          path: redmine_ldap_sync
+
+      - name: Mount the checkout as a Redmine plugin
+        run: ln -s "$GITHUB_WORKSPACE/redmine_ldap_sync" /usr/src/redmine/plugins/redmine_ldap_sync
+
+      - name: Prepare (chromium, slapd, gems, database, migrations)
+        env:
+          DB_HOST: mysql
+          WITH_BROWSER: '1'
+        run: /usr/src/redmine/plugins/redmine_ldap_sync/script/test-setup.sh
+
+      - name: Run the browser tests
+        run: /usr/src/redmine/plugins/redmine_ldap_sync/script/test-run.sh test/ui
+
+      - name: Screenshots and slapd log on failure
+        if: failure()
+        run: |
+          tail -100 /tmp/ldapsync-ldap/slapd.log || true
+          ls -l /usr/src/redmine/tmp/screenshots/ || true
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-redmine-${{ matrix.redmine }}
+          path: /usr/src/redmine/tmp/screenshots/
+          if-no-files-found: ignore

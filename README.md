@@ -261,6 +261,13 @@ The plugin working tree is bind-mounted, so edits need no rebuild — just re-ru
 Inside an already-prepared environment (a CI runner, or that container) use
 `script/test-setup.sh` and `script/test-run.sh` directly.
 
+The browser tests under `test/ui` are opt-in, since they need chromium:
+
+```
+WITH_BROWSER=1 script/test-docker.sh up
+script/test-run.sh test/ui
+```
+
 `rake redmine:plugins:test NAME=redmine_ldap_sync` still works, but only once the
 test-group gems, a test database and a seeded slapd are in place — arranging
 those is exactly what `script/test-setup.sh` does.

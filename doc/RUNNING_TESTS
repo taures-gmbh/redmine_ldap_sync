@@ -22,11 +22,29 @@ above) the two halves can be used directly:
     script/test-setup.sh              # slapd + gems + database + migrations
     script/test-run.sh [test path…]
 
-The suite is unit + functional, and green. test/ui/* is excluded and currently
-**cannot run at all**: test/ui/base.rb drives PhantomJS through
-Selenium::WebDriver::Remote::Capabilities and sets Capybara.default_wait_time,
-all removed in Selenium 4 / Capybara 3. Reviving those seven tests means porting
-them to Redmine 6's own system-test harness.
+The default run is unit + functional. The browser tests under test/ui are opt-in,
+because they need chromium:
+
+    WITH_BROWSER=1 script/test-setup.sh    # adds chromium + chromium-driver
+    script/test-run.sh test/ui
+
+script/test-docker.sh passes WITH_BROWSER through, so `WITH_BROWSER=1
+script/test-docker.sh up` prepares a container that can run them.
+
+They build on Redmine's own ApplicationSystemTestCase (Selenium + Chrome), so
+log_user and wait_for_ajax come for free. Two things worth knowing before editing
+them:
+
+* **ApplicationSystemTestCase#setup calls `Setting.delete_all`**, which throws away
+  this plugin's configuration — an LdapSetting lives in
+  `Setting.plugin_redmine_ldap_sync`, not in a table of its own. test/ui/base.rb
+  assigns it back. Do not reach for `FixtureSet.create_fixtures` to do that: the
+  fixture is already in Rails' fixture cache, so the call inserts nothing and
+  silently leaves every page rendering an empty, disabled configuration.
+* **Fields are addressed by id, buttons by data attribute, not by label.** The
+  labels are translated and have been renamed more than once (`account_flags` went
+  from "Account flags (user)" to "Lock state attribute"), and a test that fails on
+  a reworded label reports a defect that does not exist.
 
 
 Continuous integration

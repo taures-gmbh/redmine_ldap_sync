@@ -30,6 +30,17 @@ if ! command -v slapd >/dev/null || ! command -v make >/dev/null; then
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq slapd ldap-utils build-essential
 fi
 
+if [ -n "${WITH_BROWSER:-}" ]; then
+  step 'Installing chromium for the browser tests'
+  # Debian's chromium, not google-chrome: it is packaged, and chromium-driver
+  # gives Selenium a matching driver without reaching the internet. test/ui/base.rb
+  # points Selenium at both via CHROME_BIN / CHROMEDRIVER_BIN.
+  if ! command -v chromium >/dev/null; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq chromium chromium-driver
+  fi
+  chromium --version; chromedriver --version
+fi
+
 step 'Installing test-group gems'
 # The image excludes development:test. The shipped Gemfile.lock already resolves
 # mocha/simplecov/capybara, so dropping only 'test' from the exclusion list needs

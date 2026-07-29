@@ -235,29 +235,28 @@ module LdapSync::EntityManager
           group = find_group(ldap, groupname, ns(:groupname, :group_memberid)) if group.is_a? String
 
           member_filter = Net::LDAP::Filter.eq( setting.member_group, group[n(:group_memberid)].first )
-#          cacheable_ber find_all_groups(ldap, member_filter, ns(:groupname, :group_memberid)).map
-          trace "Group closure on parents"
-          all_groups = find_all_groups(ldap, member_filter, ns(:groupname, :group_memberid))
-          if all_groups.nil?
-             trace "Empty group"
-             Array.new
-          else
-             group_map = all_groups.map
-             trace "Something inside #{all_groups}"
-             all_groups
-          end
+          find_all_groups(ldap, member_filter, ns(:groupname, :group_memberid)) || Array.new
         end
       end
 
       closure << groupname
-#      parent_groups.each_with_object(closure) do |group, closure|
-#        closure += get_group_closure(ldap, group, closure) unless closure.include? group[n(:groupname)].first
-      if !parent_groups.nil?
-      parent_groups.each_with_object(closure) do |group, closure|
-         closure += get_group_closure(ldap, group, closure) unless closure.include? group[n(:groupname)].first
+
+      # Recursing MUTATES the shared closure, which is what accumulates the
+      # grandparents; the returned value of the recursive call is deliberately
+      # unused. (It used to read `closure += get_group_closure(...)`, which looked
+      # like accumulation but only rebound the block parameter and threw the result
+      # away — it worked by accident, through that mutation.)
+      parent_groups.to_a.each do |parent|
+        next if closure.include? parent[n(:groupname)].first
+
+        get_group_closure(ldap, parent, closure)
       end
 
-      end
+      # Must be the closure: `get_group_closure(...).select {...}` is what the
+      # caller does with it, so returning nil here — as the old nil-guard did
+      # whenever the cache held nothing — moved the crash upstream instead of
+      # preventing it.
+      closure
     end
 
     def find_group(ldap, group_name, attrs, &block)

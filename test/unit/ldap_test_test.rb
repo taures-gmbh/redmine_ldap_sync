@@ -159,15 +159,25 @@ class LdapTestTest < ActiveSupport::TestCase
     assert_no_match /ldap_test\.rb/, @ldap_test.messages, "Should not throw an error"
   end
 
-  def test_run_without_groups_base_dn_should_fail_on_open_ldap
+  def test_run_without_groups_base_dn_should_report_no_groups_and_not_crash
     @ldap_setting.groups_base_dn = ''
 
     @ldap_test.run_with_users_and_groups([], [])
-    assert_not_equal 0, @ldap_test.messages.size
+
+    refute_empty @ldap_test.messages
     assert_equal 0, @ldap_test.non_dynamic_groups.size
     assert_equal 0, @ldap_test.dynamic_groups.size
 
-    assert_match /ldap_test\.rb/, @ldap_test.messages, "Should throw an error"
+    # This assertion used to be `assert_match /ldap_test\.rb/, ..., "Should throw
+    # an error"` — it required the tool to crash and dump a Ruby backtrace at the
+    # administrator. That crash was real: with nested groups enabled (the fixture
+    # uses on_parents) a group search with an unusable base returned nil, and
+    # get_group_closure passed that nil back to a caller that called .select on it.
+    # LdapTest rescues Exception and prints the backtrace, so the wreckage showed up
+    # in the result box. The search legitimately finds nothing here, so finding
+    # nothing is the right answer, and nothing internal should reach the user.
+    assert_no_match /ldap_test\.rb/, @ldap_test.messages,
+                    'internals must not leak into the result'
   end
 
   def test_run_with_dynamic_bind_should_not_fail

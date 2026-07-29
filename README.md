@@ -1,6 +1,8 @@
 Redmine LDAP Sync
 =================
 
+[![test](https://github.com/taures-gmbh/redmine_ldap_sync/actions/workflows/test.yml/badge.svg)](https://github.com/taures-gmbh/redmine_ldap_sync/actions/workflows/test.yml)
+
 Extends Redmine's built-in LDAP authentication with **user and group
 synchronization** — on login and via rake tasks — plus an interactive
 LDAP↔Redmine inspection tool built into the settings page.
@@ -9,9 +11,9 @@ This is the **taures-gmbh** maintained fork. It descends from
 [thorin/redmine_ldap_sync][thorin] (unmaintained) by way of the community
 forks, and is actively kept working on current Redmine.
 
-**Tested on:** Redmine 6.1.x / Rails 7.x / Ruby 3.x. Requires Redmine **5.0.0
-or higher** (`requires_redmine`). Older Redmine/Ruby lines are covered by the
-plugin's compatibility shims but are no longer the primary target.
+**Tested on:** every push runs the suite against Redmine **5.1**, **6.0**, **6.1**
+and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
+Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
 Current version: **2.7.1** — see [What's new](#whats-new-in-this-fork).
 
@@ -45,8 +47,8 @@ Recent releases turned the admin page from a form-plus-text-dump into a
 tabbed, self-explaining tool. Highlights:
 
 * **Redmine 6.x compatibility** — the `SortedSet` dependency was dropped so the
-  plugin installs cleanly on the official Redmine Docker image (no extra gems;
-  the `Gemfile` is intentionally empty).
+  plugin installs cleanly on the official Redmine Docker image: it needs no gems
+  of its own and ships no `Gemfile` at all.
 * **Tabbed settings page** (v2.7.0) — *Settings* and *Test* are two
   deep-linkable tabs (`?tab=test`). When only one LDAP source exists the server
   list is skipped and you land straight on the settings, titled like a core
@@ -85,10 +87,8 @@ Installation & upgrade
    ```
    **Upgrade** — from inside the plugin directory, `git pull`.
 
-2. Install gems (from the Redmine root):
-   ```
-   bundle install
-   ```
+2. No gems to install — this plugin has no `Gemfile` and needs none. (Run
+   `bundle install` from the Redmine root only if other plugins require it.)
 
 3. Migrate the database (back it up first):
    ```
@@ -126,7 +126,7 @@ Redmine LDAP authentication source; configure the connection under
 
 + **Base settings** — preloads the configuration with predefined values for a
   known directory type (loaded from `config/base_settings.yml`).
-+ **Group base DN** — where groups live, e.g. `ou=people,dc=example,dc=com`.
++ **Group base DN** — where groups live, e.g. `ou=groups,dc=example,dc=com`.
 + **Groups / Users objectclass** — the object classes to match.
 + **Users search scope** — *One level* (immediate children of the user base DN)
   or *Whole subtree*.
@@ -210,6 +210,11 @@ The tasks honor three environment variables:
 + **ACTIVATE_USERS** — activate users that are active on LDAP.
 + **LOG_LEVEL** — verbosity: `silent`, `error`, `change`, or `debug` (default).
 
+**DRY_RUN and ACTIVATE_USERS are tested for presence, not for value.** Setting
+either to *anything* — including `false`, `no` or `0` — switches it **on**; leave
+them unset to switch them off. So `ACTIVATE_USERS=false` activates users. Only
+LOG_LEVEL reads its value (and ignores anything outside the four names above).
+
 ### Base settings
 
 Base settings are loaded from `config/base_settings.yml`. They are provided as a
@@ -218,14 +223,29 @@ convenience and may need adjusting for your directory — improvements welcome.
 Running the tests
 -----------------
 
-See [`doc/RUNNING_TESTS`](doc/RUNNING_TESTS). In short:
+The suite runs against a **pristine Redmine**, never a customised one, so that it
+tests the plugin and not a host application's patches. Locally it is all driven
+from Docker:
 
 ```
-NAME=redmine_ldap_sync bundle exec rake redmine:plugins:test
+script/test-docker.sh up     # pristine redmine + mysql, prepared (first run)
+script/test-docker.sh run    # the unit + functional suite
+script/test-docker.sh down   # clean up
+script/test-matrix.sh        # each supported Redmine version in turn
 ```
 
-The tests need a local slapd loaded with `test/fixtures/ldap/test-ldap.ldif`
-(setup instructions in that doc).
+The plugin working tree is bind-mounted, so edits need no rebuild — just re-run.
+Inside an already-prepared environment (a CI runner, or that container) use
+`script/test-setup.sh` and `script/test-run.sh` directly.
+
+`rake redmine:plugins:test NAME=redmine_ldap_sync` still works, but only once the
+test-group gems, a test database and a seeded slapd are in place — arranging
+those is exactly what `script/test-setup.sh` does.
+
+`.github/workflows/test.yml` runs those same scripts, one job per Redmine version.
+See [`doc/RUNNING_TESTS`](doc/RUNNING_TESTS) for the rest, including why slapd has
+to run in the same container as Redmine and the one fixture entry that modern
+OpenLDAP refuses to load.
 
 Contributing
 ------------

@@ -466,9 +466,9 @@ module LdapSync::Infectors::AuthSourceLdap
 
         msg = block_given? ? yield : msg
         case options[:level]
-        when :error; puts "-- #{msg}"
-        when :debug; puts msg unless [:change, :error].include? trace_level
-        when :info;  puts msg unless [:error].include? trace_level
+        when :error; emit "-- #{msg}"
+        when :debug; emit msg unless [:change, :error].include? trace_level
+        when :info;  emit msg unless [:error].include? trace_level
         when :change
           if trace_level == :change && !options[:obj].nil?
             obj = options[:obj]
@@ -476,11 +476,19 @@ module LdapSync::Infectors::AuthSourceLdap
                 gsub('...', '').
                 gsub(/ '#{obj}'/, '').
                 downcase
-            puts "[#{obj}] #{trace_msg}"
+            emit "[#{obj}] #{trace_msg}"
           else
-            puts msg unless [:error].include? trace_level
+            emit msg unless [:error].include? trace_level
           end
         end
+      end
+
+      # Where a batch run's output goes. A rake task wants stdout, but a
+      # long-lived Sidekiq process wants Rails.logger — and it cannot simply
+      # reassign $stdout, which is process-global and would swallow the output of
+      # every other job running concurrently. So it sets trace_sink instead.
+      def emit(line)
+        trace_sink ? trace_sink.call(line) : puts(line)
       end
 
       def dyngroups_updated?; self.dyngroups_updated; end
@@ -504,7 +512,10 @@ module LdapSync::Infectors::AuthSourceLdap
 
     receiver.instance_eval do
       delegate :has_fixed_group?, :fixed_group, :sync_on_login?, :to => :setting, :allow_nil => true
-      cattr_accessor :activate_users, :running_rake, :dyngroups_updated
+      # NB these are process-global and no transaction or job boundary resets
+      # them. A rake task exits, so it does not care; a long-lived Sidekiq
+      # process must reset them itself at the start and end of every run.
+      cattr_accessor :activate_users, :running_rake, :dyngroups_updated, :trace_sink
       cattr_accessor :trace_level do
         :debug
       end

@@ -394,6 +394,24 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     # test_group_that_cannot_be_created_is_reported covers that bucket instead.
   end
 
+  test "#sync_users should send output to trace_sink instead of stdout when set" do
+    @ldap_setting.fixed_group = nil
+    assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')
+
+    lines = []
+    AuthSourceLdap.running_rake!
+    AuthSourceLdap.trace_level = :change
+    AuthSourceLdap.trace_sink = ->(line) { lines << line }
+
+    old_stdout, $stdout = $stdout, StringIO.new
+    @auth_source.sync_users
+    stdout, $stdout = $stdout.string, old_stdout
+
+    assert_not_empty lines
+    assert lines.any? {|l| l.include?('groups added') }, lines.inspect
+    assert_equal '', stdout, 'nothing may reach stdout while a sink is set'
+  end
+
   test "#sync_users should report groups it could not create" do
     @ldap_setting.fixed_group = nil
     @ldap_setting.create_groups = false

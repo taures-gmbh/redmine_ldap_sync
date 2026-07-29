@@ -75,6 +75,7 @@ class ActiveSupport::TestCase
     AuthSourceLdap.activate_users = false
     AuthSourceLdap.dyngroups_updated = false
     AuthSourceLdap.trace_level = :debug
+    AuthSourceLdap.trace_sink = nil
   end
 
   def clear_ldap_cache!

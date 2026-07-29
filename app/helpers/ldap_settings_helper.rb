@@ -121,7 +121,7 @@ module LdapSettingsHelper
 
   # Entity names in listings link to the single-entity test (the JS fills the
   # test field and re-runs).
-  def test_entity_links(names, type)
+  def entity_test_links(names, type)
     safe_join(names.map {|name|
       link_to name, '#', :class => 'ldap-test-entity', :data => { :type => type, :name => name }
     }, ', ')
@@ -183,7 +183,7 @@ module LdapSettingsHelper
     in_redmine = [:unchanged, :removed, :unmanaged, :not_on_ldap].include?(row[:status])
     on_ldap = [:unchanged, :added, :not_synced].include?(row[:status])
 
-    name_cell = test_entity_links([row[:name]], entity_type)
+    name_cell = entity_test_links([row[:name]], entity_type)
     name_cell = safe_join(["#{name_prefix}: ", name_cell]) if name_prefix
 
     content_tag(:tr, :class => diff_row_class(row[:status])) do
@@ -202,14 +202,6 @@ module LdapSettingsHelper
     parts = [l(:"status_#{state[:status]}")]
     parts << "#{l(:field_auth_source)}: #{state[:auth_source]}" if state[:auth_source].present?
     parts.join(', ')
-  end
-
-  def group_fields_list(fields)
-    return "    #{l(:label_no_fields)}\n" if fields.empty?
-
-    fields.map do |(k, v)|
-      "    #{group_field_name k} = #{v}\n"
-    end.join
   end
 
   private

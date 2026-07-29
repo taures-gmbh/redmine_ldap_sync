@@ -67,15 +67,15 @@ module LdapSync::Infectors::User
     def sync_on_create!; @sync_on_create = true; end
     def sync_on_create?; @sync_on_create == true; end
 
-    # Compatibility with redmine 2.x
+    # True when a failed save was caused by the mail address belonging to
+    # another user — the caller turns that into a message naming the owner.
+    #
+    # of_kind? not added?: since Rails 6.1 the uniqueness validator attaches the
+    # rejected value to the error's options, and added? matches options strictly,
+    # so it always returned false here and the caller's nicer message was dead.
+    # (The Redmine < 3.x branch this used to carry is gone; we require 5.0+.)
     def email_is_taken
-      if respond_to?(:email_address)
-        # Redmine > 3.x
-        email_address.errors.added? :address, :taken
-      else
-        # Redmine < 3.x
-        errors.added? :mail, :taken
-      end
+      email_address.present? && email_address.errors.of_kind?(:address, :taken)
     end
   end
 

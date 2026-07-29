@@ -45,26 +45,11 @@ class LdapSettingsHelperTest < ActionView::TestCase
     assert_equal ['', '', 'givenName', 'mail', 'sn'], user_fields.map(&:ldap_attribute).sort
   end
 
-  def test_users_fields_list
-    fields = [
-      ["3", "Test Group"]
-    ]
-
-    assert_equal "    Description = Test Group\n", group_fields_list(fields)
-  end
-
-  def test_groups_fields_list
-    fields = [
-      ["1", "de"],
-      ["2", "67123"]
-    ]
-    group_changes = {:added => ["group1", "group2"]}
-
-    assert_equal "    Preferred Language = de\n" +
-      "    Uid Number = 67123\n" +
-      "    Groups = [\"group1\", \"group2\"]\n",
-      user_fields_list(fields, group_changes)
-  end
+  # Removed with v2.6: these covered user_fields_list / group_fields_list, the
+  # plain-text field dump of the old text/plain test output. user_fields_list was
+  # deleted then; group_fields_list survived as dead code and is now gone too.
+  # (Their names were also swapped — test_users_fields_list tested the group
+  # helper and vice versa.)
 
   def test_options_for_base_settings
     assert_not_equal 0, options_for_base_settings.size

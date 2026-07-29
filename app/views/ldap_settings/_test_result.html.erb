@@ -18,7 +18,7 @@
 <% next if @test.users_status[key].blank? %>
 <div class="ldap-test-bucket">
   <%= verdict_badge("#{l(label)} (#{@test.users_status[key].size})", tone) %>
-  <p><%= test_entity_links(@test.users_status[key], 'user') %></p>
+  <p><%= entity_test_links(@test.users_status[key], 'user') %></p>
 </div>
 <% end %>
 <% elsif @test_case == 'all_groups' %>
@@ -31,7 +31,7 @@
 <% next if @test.groups_status[key].blank? %>
 <div class="ldap-test-bucket">
   <%= verdict_badge("#{l(label)} (#{@test.groups_status[key].size})", tone) %>
-  <p><%= test_entity_links(@test.groups_status[key], 'group') %></p>
+  <p><%= entity_test_links(@test.groups_status[key], 'group') %></p>
 </div>
 <% end %>
 <% else %>

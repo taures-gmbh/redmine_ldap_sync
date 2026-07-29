@@ -15,7 +15,7 @@ forks, and is actively kept working on current Redmine.
 and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
 Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
-Current version: **2.8.0** — see [What's new](#whats-new-in-this-fork).
+Current version: **2.8.1** — see [What's new](#whats-new-in-this-fork).
 
 Features
 --------
@@ -42,6 +42,21 @@ Features
 
 What's new in this fork
 -----------------------
+
+**v2.8.1**
+
+* **The Test tab no longer shows you a Ruby backtrace** when something unexpected
+  goes wrong. The error and its class are reported; the backtrace goes to the log,
+  where it belongs.
+* **Interrupting a long run works again.** Five places rescued `Exception`, which
+  also catches `Interrupt` and signals, so Ctrl-C during an "all users" run was
+  caught and rendered as a test result instead of stopping anything. (`SyntaxError`
+  is still handled: the Test tab evaluates unsaved settings, so a malformed lock
+  condition reaches `eval` and must come back as a message on the page, not a 500.)
+* **Removed the plugin's own test rake tasks** — `redmine:plugins:ldap_sync:test`
+  and its `units`/`functionals`/`integration`/`ui`/`coveralls` variants. All of them
+  were broken, and the scripts under `script/` replace them. If you had one in a
+  cron job or CI, it will now report an unknown task.
 
 **v2.8.0** — correctness and coverage rather than UI. The test suite had been
 unrunnable since it targeted Redmine 3.x; getting it going again is what surfaced

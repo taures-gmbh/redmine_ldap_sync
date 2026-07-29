@@ -27,21 +27,30 @@ class LdapSettingsControllerTest < ActionController::TestCase
     @request.session[:user_id] = 1
   end
 
+  # assigns / assert_template were extracted from Rails into the
+  # rails-controller-testing gem, which Redmine does not bundle. Where the intent
+  # was "the action set this up", @controller.view_assigns replaces assigns();
+  # where it was "this template rendered", assert on the rendered output instead.
   def test_should_get_index
     get :index
     assert_response :success
-    assert_not_nil assigns(:ldap_settings)
+    assert_not_nil @controller.view_assigns['ldap_settings']
 
     assert_select "table tr", 3
     assert_select "a", :text => 'LDAP test server', :count => 1
     assert_select "td", :text => '127.0.0.1', :count => 1
-    assert_select "td", :text => '127.0.0.1', :count => 1
+    # Was a duplicate of the line above; the second auth source's host is .2, so
+    # the listing of the second row went unasserted.
+    assert_select "td", :text => '127.0.0.2', :count => 1
   end
 
   def test_should_get_base_settings_js
     get :base_settings, :format => 'js'
     assert_response :success
-    assert_template 'ldap_settings/base_settings'
+    assert_equal 'text/javascript', response.media_type
+    # base_settings.js.erb assigns the presets as JSON to a global
+    assert_match /\Avar base_settings = \{.*\};/, response.body
+    assert_includes response.body, 'active_directory'
   end
 
   def test_should_redirect_to_get_edit_on_get_show
@@ -148,7 +157,8 @@ class LdapSettingsControllerTest < ActionController::TestCase
         dyngroups: ''
       } 
     }
-    assert assigns(:ldap_setting).errors.added?(:class_user, :blank), 'An error must be reported for :class_user'
+    assert @controller.view_assigns['ldap_setting'].errors.of_kind?(:class_user, :blank),
+           'An error must be reported for :class_user'
     assert_response :success
   end
 
@@ -190,47 +200,80 @@ class LdapSettingsControllerTest < ActionController::TestCase
       }
     }
     assert_redirected_to ldap_settings_path
-    assert assigns(:ldap_setting).valid?
+    # Assert on the persisted outcome rather than the controller's ivar
+    assert LdapSetting.find_by_auth_source_ldap_id(@ldap_setting.id).valid?
     assert_match /success/, flash[:notice]
   end
 
+  # v2.6 replaced the text/plain dump this used to assert (and the nested
+  # ldap_test[test_users] params) with a rendered HTML fragment driven by flat
+  # test_users / test_groups params. Rewritten against that interface.
   def test_should_test
-    put :test, params: { 
+    put :test, params: {
       id: @ldap_setting.id,
-      format: 'text', 
       ldap_setting: @ldap_setting.send(:attributes),
-      ldap_test: { test_users: 'example1', test_groups: 'Therß' }
+      test_users: 'example1',
+      test_groups: 'Therß'
     }
 
     assert_response :success
-    assert_equal 'text/plain', response.content_type
+    assert_equal 'text/html', response.media_type
 
-    assert_match /User \"example1\":/,          response.body
-    assert_match /Group \"Therß\":/,            response.body
-    assert_match /Users enabled:/,              response.body
-    assert_match /Users locked by flag:/,       response.body
-    assert_match /Admin users:/,                response.body
-    assert_match /Groups:/,                     response.body
-    assert_match /LDAP attributes on a user:/,  response.body
-    assert_match /LDAP attributes on a group:/, response.body
+    # The entity under test is named, and its field-level diff table rendered
+    assert_match 'example1', response.body
+    assert_match 'Therß', response.body
+    assert_select 'table.ldap-diff'
+    assert_select 'span.ldap-verdict'
 
+    assert_no_match /ldap_test\.rb/, response.body, 'Should not throw an error'
+  end
+
+  # The all_users / all_groups listings are a separate branch of _test_result and
+  # were previously uncovered — nothing rendered their bucket lists or the entity
+  # links inside them.
+  def test_should_test_all_users
+    put :test, params: {
+      id: @ldap_setting.id,
+      ldap_setting: @ldap_setting.send(:attributes),
+      test_case: 'all_users'
+    }
+
+    assert_response :success
+    assert_select 'div.ldap-test-bucket'
+    assert_select 'a.ldap-test-entity'
+    assert_no_match /ldap_test\.rb/, response.body, 'Should not throw an error'
+  end
+
+  def test_should_test_all_groups
+    put :test, params: {
+      id: @ldap_setting.id,
+      ldap_setting: @ldap_setting.send(:attributes),
+      test_case: 'all_groups'
+    }
+
+    assert_response :success
+    assert_select 'div.ldap-test-bucket'
+    assert_select 'a.ldap-test-entity'
     assert_no_match /ldap_test\.rb/, response.body, 'Should not throw an error'
   end
 
   def test_should_validate_on_test
     @ldap_setting.dyngroups = 'invalid'
 
-    put :test, params: { 
-      id: @ldap_setting.id, 
-      format: 'text',
+    put :test, params: {
+      id: @ldap_setting.id,
       ldap_setting: @ldap_setting.send(:attributes),
-      ldap_test: { :test_users => 'example1', :test_groups => 'Therß' }
+      test_users: 'example1',
+      test_groups: 'Therß'
     }
 
     assert_response :success
-    assert_equal 'text/plain', response.content_type
 
-    assert_match /Validation errors .* Dynamic groups/m,   response.body
+    # Renders the ldap_setting_invalid partial instead of running the test.
+    # (The old regex wanted a space before "Dynamic groups" — an artifact of the
+    # plain-text indentation; the message is now a list item.)
+    assert_match /Validation errors/, response.body
+    assert_select 'li', /Dynamic groups/
 
     assert_no_match /ldap_test\.rb/, response.body, 'Should not throw an error'
   end

@@ -385,7 +385,32 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     assert_not_include '-- Updating user \'loadgeek\'...', actual
     assert_include '[loadgeek] 5 groups added', actual
     assert_include '1 deleted', actual
-    assert_include 'and 1 already created', actual
+    # The dropped assertion here was `assert_include 'and 1 already created'`.
+    # That bucket counts groups find_or_create_group could NOT produce, and the
+    # only fixture group that failed was the one with a 292-character cn — which
+    # the mdb backend can no longer store (max RDN ~246 bytes), and whose premise
+    # is unreproducible: a name has to exceed 255 characters for Redmine to reject
+    # it, which is necessarily more bytes than LDAP will accept.
+    # test_group_that_cannot_be_created_is_reported covers that bucket instead.
+  end
+
+  test "#sync_users should report groups it could not create" do
+    @ldap_setting.fixed_group = nil
+    @ldap_setting.create_groups = false
+    assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')
+
+    old_stdout, $stdout = $stdout, StringIO.new
+
+    AuthSourceLdap.running_rake!
+    AuthSourceLdap.trace_level = :change
+    @auth_source.sync_users
+
+    actual, $stdout = $stdout.string, old_stdout
+
+    # With create_groups off, every LDAP group missing from Redmine lands in the
+    # "not produced" bucket. NB the message calls these "already created", which
+    # is misleading — they are precisely the ones that were not created.
+    assert_include 'already created', actual
   end
 
   test "#sync_users should sync with dynamic groups" do
@@ -718,7 +743,11 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     user = User.try_to_login('loadgeek', 'password')
 
     actual, $stdout = $stdout.string, old_stdout
-    assert_include('Robert Hill', actual) unless actual.empty?
+    # The `unless actual.empty?` guard this used to carry made the assertion
+    # self-disabling: it passed whenever nothing was logged, i.e. exactly when the
+    # behaviour under test was broken. It was broken — email_is_taken used
+    # errors.added? and always returned false, so the owner's name was never shown.
+    assert_include 'Robert Hill', actual
   end
 
   test "with login as user #try_login should work with incomplete users" do

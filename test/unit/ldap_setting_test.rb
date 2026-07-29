@@ -175,9 +175,12 @@ class LdapSettingTest < ActiveSupport::TestCase
 
     assert !@ldap_setting.valid?
 
-    assert @ldap_setting.errors.added?(:group_memberid, :invalid)
-    assert @ldap_setting.errors.added?(:account_flags, :invalid)
-    assert @ldap_setting.errors.added?(:group_parentid, :invalid)
+    # of_kind? not added?: since Rails 6.1 the format validator attaches the
+    # rejected value to the error's options, and added? matches options strictly
+    # while of_kind? compares only attribute and type.
+    assert @ldap_setting.errors.of_kind?(:group_memberid, :invalid)
+    assert @ldap_setting.errors.of_kind?(:account_flags, :invalid)
+    assert @ldap_setting.errors.of_kind?(:group_parentid, :invalid)
 
     @ldap_setting.group_memberid = 'theQ12342'
     @ldap_setting.account_flags = 'SAMAccountName'
@@ -258,11 +261,12 @@ class LdapSettingTest < ActiveSupport::TestCase
 
     @ldap_setting.dyngroups_cache_ttl = 'one'
     assert !@ldap_setting.valid?
-    assert @ldap_setting.errors.added? :dyngroups_cache_ttl, :not_a_number
+    # of_kind? not added? — see test_should_validate_format_of_attributes
+    assert @ldap_setting.errors.of_kind?(:dyngroups_cache_ttl, :not_a_number)
 
     @ldap_setting.dyngroups_cache_ttl = '12.1'
     assert !@ldap_setting.valid?
-    assert @ldap_setting.errors.added? :dyngroups_cache_ttl, :not_an_integer
+    assert @ldap_setting.errors.of_kind?(:dyngroups_cache_ttl, :not_an_integer)
 
     @ldap_setting.dyngroups_cache_ttl = '50'
     assert @ldap_setting.valid?

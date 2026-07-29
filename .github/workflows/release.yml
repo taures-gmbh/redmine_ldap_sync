@@ -1,0 +1,47 @@
+name: release
+
+on:
+  push:
+    # Matches the existing convention: lightweight tags named vX.Y.Z
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+jobs:
+  # A tag that does not pass the suite must not become a release, so run the whole
+  # thing - every Redmine version plus the browser tests - against the tagged commit.
+  test:
+    uses: ./.github/workflows/test.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: The tag must match the version in init.rb
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          plugin="$(sed -n "s/^[[:space:]]*version '\(.*\)'.*/\1/p" init.rb)"
+          echo "tag=$tag  init.rb=$plugin"
+          if [ "$tag" != "$plugin" ]; then
+            echo "::error::tag $GITHUB_REF_NAME disagrees with init.rb ($plugin). Redmine shows the init.rb value under Administration → Plugins, so a release whose tag says something else is a release nobody can identify."
+            exit 1
+          fi
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Notes come from the commits since the previous release. Tags here are
+          # lightweight, so there is no annotation to use, and the commit subjects
+          # carry the detail. --verify-tag refuses to invent a tag that is not
+          # already pushed; if the release exists this fails rather than silently
+          # overwriting someone's edited notes.
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag

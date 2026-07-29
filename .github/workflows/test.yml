@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+  # release.yml runs this for the tagged commit, so a tag that does not pass the
+  # suite does not become a release
+  workflow_call:
 
 jobs:
   test:

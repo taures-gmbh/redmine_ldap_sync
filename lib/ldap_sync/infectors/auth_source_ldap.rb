@@ -330,7 +330,15 @@ module LdapSync::Infectors::AuthSourceLdap
 
       def dyngroups_fresh?
         if running_rake?
-          !dyngroups_updated?
+          # The cache is fresh once THIS process has refreshed it. The test used
+          # to be negated, which made the refresh unreachable: dyngroups_updated
+          # is only set by update_dyngroups_cache!, only reached when this returns
+          # false, which under the negation required dyngroups_updated to already
+          # be true. So a rake run (and the Sidekiq sync, which sets running_rake)
+          # never rebuilt the dynlist cache and served an empty or stale one.
+          # NB a long-lived worker must reset dyngroups_updated per run, or it
+          # refreshes once and then goes stale for the life of the process.
+          dyngroups_updated?
         else
           opts = {}
           if setting.dyngroups_enabled_with_ttl?

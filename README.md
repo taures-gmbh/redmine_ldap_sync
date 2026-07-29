@@ -62,9 +62,25 @@ most of this:
 * **Batch output can go to a logger** — set `AuthSourceLdap.trace_sink` to a
   callable instead of having the change log `puts` to stdout. Useful when the sync
   runs from a long-lived worker rather than a rake task. Unset, nothing changes.
-* **Tests and CI** — 140 tests, green on Redmine 5.1/6.0/6.1/7.0, run on every
-  push. Includes a fix for an order-dependent suite that failed 0-18 tests
-  depending on the random seed.
+* **One failing user no longer aborts the sync.** A single unexpected error used to
+  end the run: every later login went unsynchronised and the nested-groups cache
+  was left half-written for the next run to trust. Failures are now isolated and
+  reported by name. LDAP errors still stop the run — if the directory is gone, the
+  remaining users cannot be judged, and carrying on would look like they had all
+  disappeared from it.
+* **Errors say what they are.** Every exception raised inside a search — including
+  from the plugin's own code — was relabelled `Net::LDAP::Error "LDAP Error(0):
+  Success"`, discarding the class, message and backtrace.
+* **Nested groups no longer crash on an empty result.** A group closure returned
+  nil instead of the closure, and the caller called `.select` on it; with nested
+  groups enabled, a search that found nothing killed the run (and printed a Ruby
+  backtrace into the test tab).
+* **Settings with surrounding whitespace no longer break on frozen strings**, and
+  a locked user is looked up once rather than twice.
+* **Tests and CI** — 144 tests plus 10 browser tests, green on Redmine
+  5.1/6.0/6.1/7.0, run on every push. Includes a fix for an order-dependent suite
+  that failed between 0 and 18 tests depending on the random seed, and the browser
+  tests ported off PhantomJS to Redmine's own system-test harness.
 
 Earlier releases turned the admin page from a form-plus-text-dump into a
 tabbed, self-explaining tool. Highlights:

@@ -51,6 +51,21 @@ jobs:
       - name: Mount the checkout as a Redmine plugin
         run: ln -s "$GITHUB_WORKSPACE/redmine_ldap_sync" /usr/src/redmine/plugins/redmine_ldap_sync
 
+      # Keep until the bundle path behaves the same here as it does locally: the
+      # first run failed writing /usr/local/bundle/config as root, which a plain
+      # permission story does not explain.
+      - name: Diagnose the bundle path
+        run: |
+          id
+          ls -ld /usr/local/bundle /usr/local/bundle/config || true
+          if touch /usr/local/bundle/probe 2>/dev/null; then
+            echo "write to /usr/local/bundle: ok"; rm -f /usr/local/bundle/probe
+          else
+            echo "write to /usr/local/bundle: FAILED"
+          fi
+          mount | grep -iE "usr/local|overlay" | head -3
+          df -h /usr/local/bundle | tail -1
+
       - name: Prepare (slapd, gems, database, migrations)
         env:
           DB_HOST: mysql

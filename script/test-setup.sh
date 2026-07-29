@@ -40,7 +40,19 @@ step 'Installing test-group gems'
 # sticky bit — which is exactly how the official image ships /usr/local/bundle.
 find /usr/local/bundle -maxdepth 3 -type d -perm -0002 ! -perm -1000 -exec chmod +t {} + 2>/dev/null || true
 cd "$REDMINE_DIR"
-bundle config set --local without development
+
+# Point BUNDLE_APP_CONFIG at a config we own instead of editing the image's.
+# `bundle config set --local` writes to /usr/local/bundle/config (the image sets
+# BUNDLE_APP_CONFIG there), which fails on GitHub Actions runners even as root.
+# BUNDLE_WITHOUT alone does not help: bundler ranks the app config file ABOVE the
+# environment, so the image's "development:test" would keep winning and the test
+# group would never install. The image's config holds nothing but that one
+# setting, so replacing the location loses nothing. Gems still land in GEM_HOME.
+# test-run.sh must export the same path or bundler reverts to the image's config.
+export BUNDLE_APP_CONFIG="${BUNDLE_APP_CONFIG_DIR:-/tmp/ldapsync-bundle}"
+mkdir -p "$BUNDLE_APP_CONFIG"
+printf 'BUNDLE_WITHOUT: "development"\n' > "$BUNDLE_APP_CONFIG/config"
+echo "running as $(id -un); bundle config at $BUNDLE_APP_CONFIG; gems in ${GEM_HOME:-?}"
 bundle install --quiet
 
 step 'Writing config/database.yml (test only)'

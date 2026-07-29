@@ -12,6 +12,11 @@ set -euo pipefail
 REDMINE_DIR="${REDMINE_DIR:-/usr/src/redmine}"
 export RAILS_ENV=test
 export SECRET_KEY_BASE="${SECRET_KEY_BASE:-testonly}"
+# Must match test-setup.sh. Without this, bundler falls back to the image's
+# config, which excludes the test group, and the run dies on `require
+# 'mocha/minitest'`. (BUNDLE_WITHOUT would not do: the app config file outranks
+# the environment.)
+export BUNDLE_APP_CONFIG="${BUNDLE_APP_CONFIG_DIR:-/tmp/ldapsync-bundle}"
 
 cd "$REDMINE_DIR"
 

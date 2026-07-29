@@ -32,16 +32,35 @@ jobs:
             exit 1
           fi
 
+      - name: Build the release notes from the commits
+        run: |
+          # NOT --generate-notes: GitHub builds those from merged pull requests, and
+          # this repo commits straight to master, so it yields nothing but a compare
+          # link. The commit subjects are the changelog here.
+          prev="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          {
+            if [ -n "$prev" ]; then
+              echo "### Changes since $prev"
+              echo
+              git log --no-merges --pretty='- %s' "$prev..$GITHUB_REF_NAME"
+              echo
+              echo "**Full changelog**: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+            else
+              echo '### Changes'
+              echo
+              git log --no-merges --pretty='- %s' "$GITHUB_REF_NAME"
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          echo "--- notes ---"; cat "$RUNNER_TEMP/notes.md"
+
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Notes come from the commits since the previous release. Tags here are
-          # lightweight, so there is no annotation to use, and the commit subjects
-          # carry the detail. --verify-tag refuses to invent a tag that is not
-          # already pushed; if the release exists this fails rather than silently
-          # overwriting someone's edited notes.
+          # --verify-tag refuses to invent a tag that is not already pushed; if the
+          # release exists this fails rather than silently overwriting notes someone
+          # has edited by hand.
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-file "$RUNNER_TEMP/notes.md" \
             --verify-tag

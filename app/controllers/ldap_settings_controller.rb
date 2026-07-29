@@ -114,7 +114,7 @@ class LdapSettingsController < ApplicationController
   def apply_user
     auth_source = @ldap_setting.auth_source_ldap
     login = params[:login].to_s
-    user = ::User.where("LOWER(login) = ?", login.mb_chars.downcase.to_s).first
+    user = ::User.where("LOWER(login) = ?", login.downcase).first
 
     if !@ldap_setting.active? || (user.present? && user.auth_source_id != auth_source.id)
       render :partial => 'ldap_apply_invalid'

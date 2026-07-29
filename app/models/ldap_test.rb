@@ -100,7 +100,7 @@ class LdapTest
         if group_data
           @group_attrs ||= group_data
           groupname = group_data[n(:groupname)].try(:first) || name
-          local_group = ::Group.where("LOWER(lastname) = ?", name.mb_chars.downcase.to_s).first
+          local_group = ::Group.where("LOWER(lastname) = ?", name.downcase).first
           groups_at_ldap[name] = {
             :fields => get_group_fields(name, group_data),
             :matches_pattern => !setting.has_groupname_pattern? || !!(setting.groupname_regexp =~ groupname),
@@ -139,10 +139,10 @@ class LdapTest
     with_ldap_connection(@bind_user, @bind_password) do |ldap|
       @user_changes = ldap_users
       local = ::User.logged.pluck(:login, :status, :auth_source_id).
-        each_with_object({}) {|(l, s, a), h| h[l.mb_chars.downcase.to_s] = [s, a] }
+        each_with_object({}) {|(l, s, a), h| h[l.downcase] = [s, a] }
 
       user_changes[:enabled].each do |login|
-        status, auth = local[login.mb_chars.downcase.to_s]
+        status, auth = local[login.downcase]
         bucket =
           if status.nil?
             setting.create_users? ? :would_create : :not_created
@@ -157,7 +157,7 @@ class LdapTest
       end
 
       user_changes[:locked].each do |login|
-        status, auth = local[login.mb_chars.downcase.to_s]
+        status, auth = local[login.downcase]
         bucket =
           if status.nil?
             :locked_not_created
@@ -185,14 +185,14 @@ class LdapTest
       find_all_groups(ldap, nil, n(:groupname)) {|entry| ldap_names << entry.first unless entry.first.blank? }
 
       local_names = ::Group.givable.pluck(:lastname)
-      local_set = local_names.map {|name| name.mb_chars.downcase.to_s }.to_set
+      local_set = local_names.map {|name| name.downcase }.to_set
 
       ldap_names.uniq.sort_by(&:downcase).each do |name|
         matches = !setting.has_groupname_pattern? || !!(setting.groupname_regexp =~ name)
         bucket =
           if !matches
             :excluded_by_pattern
-          elsif local_set.include?(name.mb_chars.downcase.to_s)
+          elsif local_set.include?(name.downcase)
             :in_sync
           elsif setting.create_groups?
             :would_create
@@ -202,9 +202,9 @@ class LdapTest
         (groups_status[bucket] ||= []) << name
       end
 
-      ldap_set = ldap_names.map {|name| name.mb_chars.downcase.to_s }.to_set
+      ldap_set = ldap_names.map {|name| name.downcase }.to_set
       local_names.sort_by(&:downcase).each do |name|
-        next if ldap_set.include?(name.mb_chars.downcase.to_s)
+        next if ldap_set.include?(name.downcase)
 
         (groups_status[:only_in_redmine] ||= []) << name
       end
@@ -227,7 +227,7 @@ class LdapTest
     # The Redmine user for a login plus whether it belongs to a different
     # auth source (the sync skips those).
     def local_user_for(login)
-      user = ::User.where("LOWER(login) = ?", login.mb_chars.downcase.to_s).first
+      user = ::User.where("LOWER(login) = ?", login.downcase).first
       [user, user.present? && user.auth_source_id != auth_source_ldap.id]
     end
 
@@ -249,12 +249,12 @@ class LdapTest
       current = local_user ? local_user.groups.map {|g| g.name } : []
       return rows if current.empty?
 
-      deleted = group_changes[:deleted].map {|g| g.mb_chars.downcase.to_s }
+      deleted = group_changes[:deleted].map {|g| g.downcase }
       on_ldap = ldap_group_names(ldap, current)
       re = setting.groupname_regexp
 
       current.sort_by(&:downcase).each do |name|
-        dc = name.mb_chars.downcase.to_s
+        dc = name.downcase
         status = if deleted.include?(dc)
           :removed
         elsif setting.has_groupname_pattern? && !(re =~ name)
@@ -275,7 +275,7 @@ class LdapTest
 
       filter = names.map {|g| Net::LDAP::Filter.eq(setting.groupname, g) }.reduce(:|)
       found = find_all_groups(ldap, filter, n(:groupname)) || []
-      found.map {|e| Array(e).first.to_s.mb_chars.downcase.to_s }.to_set
+      found.map {|e| Array(e).first.to_s.downcase }.to_set
     end
 
     # The Redmine user's current values for the fields the sync would apply,
@@ -320,10 +320,10 @@ class LdapTest
 
       required_ok = true
       if setting.has_required_group?
-        current = user.groups.map {|g| g.name.mb_chars.downcase.to_s }
-        added = group_changes[:added].map {|g| g.mb_chars.downcase.to_s }
-        deleted = group_changes[:deleted].map {|g| g.mb_chars.downcase.to_s }
-        required_ok = ((current | added) - deleted).include?(setting.required_group.mb_chars.downcase.to_s)
+        current = user.groups.map {|g| g.name.downcase }
+        added = group_changes[:added].map {|g| g.downcase }
+        deleted = group_changes[:deleted].map {|g| g.downcase }
+        required_ok = ((current | added) - deleted).include?(setting.required_group.downcase)
       end
 
       if user.locked?
@@ -382,21 +382,21 @@ class LdapTest
     # alone (different auth source / local accounts).
     def group_member_rows(ldap, local_group, group_data)
       ldap_logins = ldap_member_logins(ldap, group_data)
-      ldap_set = ldap_logins.map {|l| l.mb_chars.downcase.to_s }.to_set
-      syncable = Set.new((user_changes[:enabled] + user_changes[:locked]).map {|l| l.mb_chars.downcase.to_s })
+      ldap_set = ldap_logins.map {|l| l.downcase }.to_set
+      syncable = Set.new((user_changes[:enabled] + user_changes[:locked]).map {|l| l.downcase })
 
       current = local_group ? local_group.users.map {|u| [u.login, u.auth_source_id] } : []
-      current_set = current.map {|login, _| login.mb_chars.downcase.to_s }.to_set
+      current_set = current.map {|login, _| login.downcase }.to_set
 
       rows = []
       ldap_logins.sort_by(&:downcase).each do |login|
-        dc = login.mb_chars.downcase.to_s
+        dc = login.downcase
         next if current_set.include?(dc)
 
         rows << {:name => login, :status => syncable.include?(dc) ? :added : :not_synced}
       end
       current.sort_by {|login, _| login.downcase }.each do |login, auth_id|
-        dc = login.mb_chars.downcase.to_s
+        dc = login.downcase
         status = if ldap_set.include?(dc)
           :unchanged
         elsif auth_id == auth_source_ldap.id

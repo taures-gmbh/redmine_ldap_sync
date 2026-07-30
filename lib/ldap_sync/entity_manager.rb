@@ -39,7 +39,7 @@ module LdapSync::EntityManager
       user_fields = user_data.to_h.inject({}) do |fields, (attr, value)|
         f = setting.user_field(attr)
         if f && fields_to_sync.include?(f)
-          fields[f] = value.first unless value.nil? || value.first.blank?
+          fields[f] = shorten_to_fit(f, value.first, username) unless value.nil? || value.first.blank?
         end
         fields
       end
@@ -73,6 +73,48 @@ module LdapSync::EntityManager
       end
 
       group_fields
+    end
+
+    # Names Redmine stores in a narrower column than LDAP is willing to hold. Only
+    # these two: mail must never be altered, because a shortened address is a wrong
+    # address rather than a shorter one, and login and group names are what the next
+    # run matches against LDAP — shortening one would make the entity unmatchable
+    # and churn it on every sync.
+    SHORTENABLE_FIELDS = %w( firstname lastname ).freeze
+
+    # Redmine's users.firstname is varchar(30) with a validation to match, so a name
+    # one character over means the account is silently never created — the sync logs
+    # one line among thousands and moves on. Found in a real directory: an account
+    # with four given names totalling 31 characters, never synced.
+    #
+    # Shorten by abbreviating trailing words to an initial, so
+    # "Erika Charlotte Wilhelmine Elke" becomes "Erika Charlotte Wilhelmine E."
+    # instead of losing a name or being cut mid-word. Both the column and the
+    # validation count characters, so character length is the right measure here.
+    def shorten_to_fit(field, value, obj = nil)
+      return value unless SHORTENABLE_FIELDS.include?(field)
+
+      limit = ::User.columns_hash[field].try(:limit)
+      return value if limit.nil? || value.to_s.length <= limit
+
+      shortened = abbreviate(value.to_s, limit)
+      change obj, "-- shortened #{field} to fit #{limit} characters: " \
+                  "#{value.inspect} -> #{shortened.inspect}"
+      shortened
+    end
+
+    # Abbreviate from the end, so the leading given name survives intact. Falls back
+    # to a plain cut for a single word with no space to work with.
+    def abbreviate(value, limit)
+      words = value.split(' ')
+
+      (words.size - 1).downto(1) do |i|
+        words[i] = "#{words[i][0]}."
+        candidate = words.join(' ')
+        return candidate if candidate.length <= limit
+      end
+
+      value[0, limit].strip
     end
 
     def user_required_custom_fields

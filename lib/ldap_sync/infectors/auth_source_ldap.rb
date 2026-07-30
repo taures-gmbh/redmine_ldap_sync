@@ -224,14 +224,7 @@ module LdapSync::Infectors::AuthSourceLdap
         if user.save
           user
         else
-          error_message = if user.email_is_taken
-            mail_owner = User.find_by_mail(user.mail)
-            fmt = User.name_formatter[:firstname_lastname]
-            "email already taken by #{mail_owner.name(fmt)} (#{mail_owner.login})"
-          else
-            "#{user.errors.full_messages.join('", "')}"
-          end
-          error "Could not sync user '#{user.login}': \"#{error_message}\""; nil
+          error "Could not sync user '#{user.login}': \"#{save_error_message(user)}\""; nil
         end
       end
 
@@ -333,15 +326,26 @@ module LdapSync::Infectors::AuthSourceLdap
         if user.save
           return user, true
         else
-          error_message = if user.email_is_taken
-            mail_owner = User.find_by_mail(user.mail)
-            fmt = User.name_formatter[:firstname_lastname]
-            "email already taken by #{mail_owner.name(fmt)} (#{mail_owner.login})"
-          else
-            "#{user.errors.full_messages.join('", "')}"
-          end
-          change user.login, "-- Could not create user '#{user.login}': \"#{error_message}\""; nil
+          change user.login, "-- Could not create user '#{user.login}': \"#{save_error_message(user)}\""; nil
         end
+      end
+
+      # Why a failed save failed, for the sync log. This was duplicated verbatim in
+      # sync_user_fields and find_or_create_user.
+      #
+      # find_by_mail can answer nil even when email_is_taken is true — the address may
+      # sit on a record this lookup does not return — and calling .name on that nil
+      # raised NoMethodError from inside the error path itself, so a message about a
+      # duplicate address became a crash. The branch had been dead since Rails 6.1
+      # (see User#email_is_taken), so repairing that check is what made this
+      # reachable; RubyMine's nil analysis is what pointed it out.
+      def save_error_message(user)
+        return user.errors.full_messages.join('", "') unless user.email_is_taken
+
+        owner = ::User.find_by_mail(user.mail)
+        return "email #{user.mail} already taken" if owner.nil?
+
+        "email already taken by #{owner.name(::User.name_formatter[:firstname_lastname])} (#{owner.login})"
       end
 
       def new_memory_cache

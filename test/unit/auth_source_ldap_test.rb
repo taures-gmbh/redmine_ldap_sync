@@ -394,6 +394,23 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     # test_group_that_cannot_be_created_is_reported covers that bucket instead.
   end
 
+  test "#try_login should not crash reporting a taken mail whose owner cannot be found" do
+    # find_by_mail can answer nil even when the uniqueness check failed, and calling
+    # .name on that nil used to raise NoMethodError from inside the error path — a
+    # crash instead of a message. Only reachable since email_is_taken was repaired.
+    AuthSourceLdap.running_rake!
+    AuthSourceLdap.trace_level = :error
+    User.find_by_login('rhill').update_attribute(:mail, 'loadgeek@fakemail.com')
+    User.stubs(:find_by_mail).returns(nil)
+
+    old_stdout, $stdout = $stdout, StringIO.new
+    User.try_to_login('loadgeek', 'password')
+    actual, $stdout = $stdout.string, old_stdout
+
+    assert_include 'already taken', actual
+    assert_not_include 'NoMethodError', actual
+  end
+
   test "#sync_users should carry on after one user fails and report it" do
     boom = 'loadgeek'
     @auth_source.stubs(:sync_user).with {|user, *| user.login == boom }.raises(RuntimeError, 'kaboom')

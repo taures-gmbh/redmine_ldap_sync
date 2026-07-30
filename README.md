@@ -15,7 +15,7 @@ forks, and is actively kept working on current Redmine.
 and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
 Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
-Current version: **2.8.1** — see [What's new](#whats-new-in-this-fork).
+Current version: **2.9.0** — see [What's new](#whats-new-in-this-fork).
 
 Features
 --------
@@ -42,6 +42,19 @@ Features
 
 What's new in this fork
 -----------------------
+
+**v2.9.0**
+
+* **An over-long name no longer costs you the whole account.** Redmine stores
+  `users.firstname` in a `varchar(30)`, so an LDAP name a single character longer
+  meant the user was never created — silently, on every run. Names that do not fit
+  are now shortened by abbreviating trailing words to an initial:
+  `"Erika Charlotte Wilhelmine Elke"` → `"Erika Charlotte Wilhelmine E."`. Every
+  shortening is reported in the sync log with the login and both values.
+
+  Only `firstname` and `lastname` are shortened. `mail` never is — a shortened
+  address is a *wrong* address — and neither are logins or group names, which are
+  what the next run matches against LDAP.
 
 **v2.8.1**
 

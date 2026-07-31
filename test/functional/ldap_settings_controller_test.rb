@@ -49,7 +49,7 @@ class LdapSettingsControllerTest < ActionController::TestCase
     assert_response :success
     assert_equal 'text/javascript', response.media_type
     # base_settings.js.erb assigns the presets as JSON to a global
-    assert_match /\Avar base_settings = \{.*\};/, response.body
+    assert_match /\Avar base_settings = \{.*};/, response.body
     assert_includes response.body, 'active_directory'
   end
 

@@ -66,7 +66,7 @@ class LdapSetting
   safe_attributes *(LDAP_ATTRIBUTES + CLASS_NAMES + FLAGS + COMBOS + OTHERS)
   define_attribute_methods LDAP_ATTRIBUTES + CLASS_NAMES + FLAGS + COMBOS + OTHERS
   ::User::STANDARD_FIELDS = %w( firstname lastname mail )
-	
+
   [:login, *User::STANDARD_FIELDS].each {|f| module_eval("def #{f}; auth_source_ldap.attr_#{f}; end") }
 
   def id
@@ -172,14 +172,14 @@ class LdapSetting
   # Returns the group field name for the given ldap attribute
   def group_field(ldap_attr)
     ldap_attr = ldap_attr.to_s
-    group_ldap_attrs.find {|(k, v)| v.downcase == ldap_attr }.try(:first)
+    group_ldap_attrs.find {|(_k, v)| v.downcase == ldap_attr }.try(:first)
   end
 
   # Returns the user field name for the given ldap attribute
   def user_field(ldap_attr)
     ldap_attr = ldap_attr.to_s
-    result = @user_standard_ldap_attrs.find {|(k, v)| v.downcase == ldap_attr }.try(:first)
-    result ||= user_ldap_attrs.to_h.find {|(k, v)| v.downcase == ldap_attr }.try(:first) 
+    @user_standard_ldap_attrs.find {|(_k, v)| v.downcase == ldap_attr }.try(:first) ||
+      user_ldap_attrs.to_h.find {|(_k, v)| v.downcase == ldap_attr }.try(:first)
   end
 
   def test
@@ -261,7 +261,8 @@ class LdapSetting
 
   # Find the ldap setting for a given ldap auth source
   def self.find_by_auth_source_ldap_id(id)
-    return unless source = AuthSourceLdap.find_by_id(id)
+    source = AuthSourceLdap.find_by_id(id)
+    return if source.nil?
 
     LdapSetting.new(source)
   end

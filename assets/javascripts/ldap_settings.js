@@ -30,7 +30,7 @@ $(function() {
 
     if (selected !== '') {
       $(prefix + '.' + selected).show();
-      
+
       // Add required for visible and required inputs
       $(prefix + '.' + selected + ' input').each(function(){
 
@@ -42,19 +42,16 @@ $(function() {
   }
 
   function show_dyngroups_ttl(elem) {
-    if ($(elem).val() == 'enabled_with_ttl')
-      $('#dyngroups-cache-ttl').show();
-    else
-      $('#dyngroups-cache-ttl').hide();
+    $('#dyngroups-cache-ttl').toggle($(elem).val() === 'enabled_with_ttl');
   }
 
-  show_options($('#ldap_setting_group_membership'), 'membership');
-  $('#ldap_setting_group_membership')
-    .bind('change keyup', function() { show_options(this, 'membership'); });
+  var groupMembership = $('#ldap_setting_group_membership');
+  show_options(groupMembership, 'membership');
+  groupMembership.bind('change keyup', function() { show_options(this, 'membership'); });
 
-  show_options($('#ldap_setting_nested_groups'), 'nested');
-  $('#ldap_setting_nested_groups')
-    .bind('change keyup', function() { show_options(this, 'nested'); });
+  var nestedGroups = $('#ldap_setting_nested_groups');
+  show_options(nestedGroups, 'nested');
+  nestedGroups.bind('change keyup', function() { show_options(this, 'nested'); });
 
   $('#base_settings').bind('change keyup', function() {
     var id = $(this).val();
@@ -62,16 +59,17 @@ $(function() {
 
     var hash = base_settings[id];
     for (var k in hash) if (hash.hasOwnProperty(k)) {
-      if (k === 'name' || hash[k] === $('#ldap_setting_' + k).val()) continue;
+      var field = $('#ldap_setting_' + k);
+      if (k === 'name' || hash[k] === field.val()) continue;
 
-      $('#ldap_setting_' + k).val(hash[k]).change()
+      field.val(hash[k]).change()
         .effect('highlight', {easing: 'easeInExpo'}, 500);
     }
   });
 
-  show_dyngroups_ttl($('#ldap_setting_dyngroups'));
-  $('#ldap_setting_dyngroups')
-    .bind('change keyup', function() { show_dyngroups_ttl(this); });
+  var dyngroups = $('#ldap_setting_dyngroups');
+  show_dyngroups_ttl(dyngroups);
+  dyngroups.bind('change keyup', function() { show_dyngroups_ttl(this); });
 
   // the Test tab mirrors the lock-detection settings; both directions stay
   // in sync, the settings-form field remains the single saved source
@@ -87,20 +85,11 @@ $(function() {
 
   // Enter in a test field runs the test (instead of a stray form submit)
   $('#test_users, #test_groups').on('keydown', function (e) {
-    if (e.which == 13) {
+    if (e.which === 13) {
       e.preventDefault();
       $('#commit-test-submit').click();
     }
   });
-
-  //$('#commit-test')
-  //  .bind('ajax:before', function() {
-  //    var data = $('form[id^="edit_ldap_setting"]').serialize();
-  //    $(this).data('params', data);
-  //  })
-  //  .bind('ajax:success', function(event, data) {
-  //    $('#test-result').text(data);
-  //  });
 
   var runLdapTest = function(testCase) {
     var form = $('form[id^="commit-test"]');

@@ -105,6 +105,22 @@ class LdapSync::LdapSettingTest < LdapSync::UiTestCase
     assert_shown  'parent_group', 'group_parentid'
   end
 
+  # The TTL field only makes sense for one of the three dynamic-group modes, and
+  # only JS enforces that. Uncovered when the show/hide pair became a single
+  # toggle(), which is exactly the kind of change that silently inverts.
+  def test_the_dyngroups_ttl_should_only_show_for_the_ttl_mode
+    visit_ldap_setting
+
+    select 'Enabled with a TTL', :from => 'ldap_setting_dyngroups'
+    assert_selector '#dyngroups-cache-ttl', :visible => true
+
+    select 'Enabled', :from => 'ldap_setting_dyngroups'
+    assert_no_selector '#dyngroups-cache-ttl', :visible => true
+
+    select 'Disabled', :from => 'ldap_setting_dyngroups'
+    assert_no_selector '#dyngroups-cache-ttl', :visible => true
+  end
+
   # Replaces the old test of the text/plain dump this tab used to render, removed
   # in v2.6 along with the interface it asserted.
   def test_the_test_tab_should_report_a_single_user_as_a_diff

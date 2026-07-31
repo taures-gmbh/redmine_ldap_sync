@@ -13,8 +13,8 @@ module LdapSync::DryRun::User
   module InstanceMethods
     def lock!; end
     def activate!; end
-    def update_attributes(attrs = {}); end
-    def save(*args); end
+    def update_attributes(_attrs = {}); end
+    def save(*_args); end
   end
 
   class DryRunEmailAddress

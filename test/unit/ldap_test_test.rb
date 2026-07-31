@@ -31,7 +31,7 @@ class LdapTestTest < ActiveSupport::TestCase
   end
 
   def test_run_with_disabled_settings
-    @ldap_setting.active = false;
+    @ldap_setting.active = false
     @ldap_test = LdapTest.new(@ldap_setting)
 
     assert @ldap_test.setting.active?

@@ -232,7 +232,7 @@ module LdapSettingsHelper
       config_dir = File.join(Redmine::Plugin.find(:redmine_ldap_sync).directory, 'config')
       default = baseable_fields.inject({}) {|h, k| h[k] = ''; h }
       @base_settings = YAML::load_file(File.join(config_dir, 'base_settings.yml'))
-      @base_settings.each {|k,h| h.reverse_merge!(default) }
+      @base_settings.each {|_k, h| h.reverse_merge!(default) }
     end
 
     class SyncField < Struct.new :id, :name, :required, :synchronize, :ldap_attribute, :default_value

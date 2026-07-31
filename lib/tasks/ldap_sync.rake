@@ -20,7 +20,7 @@ namespace :redmine do
     namespace :ldap_sync do
 
       desc "Synchronize redmine's users fields and groups with those on LDAP"
-      task :sync_users => :environment do |t, args|
+      task :sync_users => :environment do
         init_task
 
         AuthSourceLdap.activate_users! unless ENV['ACTIVATE_USERS'].nil?
@@ -31,7 +31,7 @@ namespace :redmine do
       end
 
       desc "Synchronize redmine's groups fields with those on LDAP"
-      task :sync_groups => :environment do |t, args|
+      task :sync_groups => :environment do
         init_task
 
         AuthSourceLdap.all.each do |as|

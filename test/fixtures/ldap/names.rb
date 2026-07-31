@@ -226,7 +226,7 @@ groups.each do |groupname|
   members = ""
   selected_users = []
   selected_groups = []
-  (1..(1+rng.rand(3))).each do |i|
+  (1..(1+rng.rand(3))).each do
     if rng.rand(2) == 0
       name = (users - selected_users).sample(:random => rng)
       members += user_member.gsub('%{username}', name)

@@ -511,7 +511,7 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')
     @auth_source.sync_users
 
-    actual, $stdout = $stdout.string, old_stdout
+    $stdout = old_stdout
 
     user = User.find_by_login('tweetsave')
     assert_include 'TweetUsers', user.groups.map(&:lastname)
@@ -817,7 +817,7 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
 
     assert User.find_by_login 'loadgeek'
 
-    user = User.try_to_login('loadgeek', 'password')
+    User.try_to_login('loadgeek', 'password')
 
     actual, $stdout = $stdout.string, old_stdout
     # The `unless actual.empty?` guard this used to carry made the assertion
@@ -926,8 +926,6 @@ class AuthSourceLdapTest < ActiveSupport::TestCase
     @loadgeek = users(:loadgeek)
     @ldap_setting.sync_on_login = ''
     assert @ldap_setting.save, @ldap_setting.errors.full_messages.join(', ')
-
-    groups = @loadgeek.groups
 
     user = User.try_to_login('loadgeek', 'password')
     assert_equal 'miscuser8@foo.bar', user.mail

@@ -131,17 +131,16 @@ module LdapSync::EntityManager
       with_ldap_connection do |ldap|
         changes = { enabled: Set.new, locked: Set.new, deleted: Set.new }
 
-        unless setting.has_account_flags?
-          changes[:enabled].merge(find_all_users(ldap, n(:login)).map(&:first))
-        else
-          all_users = find_all_users(ldap, ns(:login, :account_flags))
-          all_users.each_with_index do |entry|
+        if setting.has_account_flags?
+          find_all_users(ldap, ns(:login, :account_flags)).each do |entry|
             if account_locked?(entry[n(:account_flags)].first)
               changes[:locked] .add(entry[n(:login)].first)
             else
               changes[:enabled] .add(entry[n(:login)].first)
             end
           end
+        else
+          changes[:enabled].merge(find_all_users(ldap, n(:login)).map(&:first))
         end
 
         changes[:enabled].delete("")
@@ -183,17 +182,19 @@ module LdapSync::EntityManager
         end if names_filter
 
         if setting.has_primary_group?
-      changes[:added].merge(get_primary_group(ldap, user))
-    end
+          changes[:added].merge(get_primary_group(ldap, user))
+        end
 
         case setting.group_membership
         when 'on_groups'
           # Find user's memberid
           memberid = user.login
           if setting.user_memberid != setting.login
-            entry = find_user(ldap, user.login, ns(:user_memberid)) and
-              memberid = entry[n(:user_memberid)].first and
+            entry = find_user(ldap, user.login, ns(:user_memberid))
+            if entry.present?
+              memberid = entry[n(:user_memberid)].first
               user_dn = entry[:dn].first
+            end
           end
 
           if setting.user_memberid == setting.login || entry.present?
@@ -227,8 +228,8 @@ module LdapSync::EntityManager
         if setting.sync_dyngroups?
           user_dn ||= find_user(ldap, user.login, :dn).try(:first)
           unless user_dn.nil?
-        changes[:added].merge(get_dynamic_groups(user_dn))
-      end
+            changes[:added].merge(get_dynamic_groups(user_dn))
+          end
         end
       end
 

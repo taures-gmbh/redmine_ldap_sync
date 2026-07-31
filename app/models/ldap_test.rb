@@ -119,7 +119,7 @@ class LdapTest
       end
       if setting.sync_dyngroups?
         find_all_dyngroups(ldap, :update_cache => true)
-        dynamic_groups.reject! {|(k, v)| k !~ /#{setting.groupname_pattern}/ } if setting.has_groupname_pattern?
+        dynamic_groups.reject! {|(k, _v)| k !~ /#{setting.groupname_pattern}/ } if setting.has_groupname_pattern?
       end
     end
   # StandardError plus ScriptError, not Exception: a signal or Interrupt during a
@@ -143,7 +143,7 @@ class LdapTest
   # Full LDAP <-> Redmine diff over all users, bucketed by what a
   # synchronization would do with each login.
   def run_all_users
-    with_ldap_connection(@bind_user, @bind_password) do |ldap|
+    with_ldap_connection(@bind_user, @bind_password) do |_ldap|
       @user_changes = ldap_users
       local = ::User.logged.pluck(:login, :status, :auth_source_id).
         each_with_object({}) {|(l, s, a), h| h[l.downcase] = [s, a] }

@@ -347,7 +347,7 @@ class LdapSettingTest < ActiveSupport::TestCase
     assert_equal %w( uid givenName sn mail cn description member ),
       @ldap_setting.ldap_attributes(:login, :firstname, :lastname, :mail, :groupname, :account_flags, :member_group)
 
-    assert_equal [], @ldap_setting.ldap_attributes()
+    assert_equal [], @ldap_setting.ldap_attributes
 
     assert_equal ['member'], @ldap_setting.ldap_attributes(:member_group)
   end

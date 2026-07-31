@@ -35,7 +35,7 @@ module LdapSync::DryRun::Group
 
     unless receiver.reflect_on_association(:users)
       receiver.has_and_belongs_to_many :users do
-        def <<(users)
+        def <<(_users)
           puts "   !! Added to group '#{proxy_association.owner.lastname}'"
         end
       end

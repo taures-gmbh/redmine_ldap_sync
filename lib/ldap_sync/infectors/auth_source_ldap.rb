@@ -60,8 +60,7 @@ module LdapSync::Infectors::AuthSourceLdap
 
       @closure_cache = new_memory_cache if setting.nested_groups_enabled?
 
-#      with_ldap_connection do |_|
-      with_ldap_connection do |ldap|
+      with_ldap_connection do |_ldap|
         ldap_users[:locked].each do |login|
           # One lookup: this used to query for the user, then look the same login up
           # again through find_local_user before syncing it.
@@ -405,8 +404,14 @@ module LdapSync::Infectors::AuthSourceLdap
       end
 
       def update_closure_cache!
-        disk_cache = ActiveSupport::Cache.lookup_store(:file_store, "#{cache_root}/nested_groups")
+        # sync_users seeds @closure_cache under the same nested_groups_enabled?
+        # guard that calls this. Read the ivar, not the closure_cache accessor:
+        # the accessor would lazily build the *disk* store and we would then copy
+        # it onto itself.
         mem_cache = @closure_cache
+        return if mem_cache.nil?
+
+        disk_cache = ActiveSupport::Cache.lookup_store(:file_store, "#{cache_root}/nested_groups")
 
         # Match all the entries we want to delete
         delete_unless_from_cache(disk_cache) {|k| mem_cache.has_key?(k) }
@@ -415,7 +420,10 @@ module LdapSync::Infectors::AuthSourceLdap
 
       def update_dyngroups_cache!(mem_cache)
         trace do
-          mem_cache.sort_by {|u, m| u}.reduce("   update_dyngroups_cache\n") do |t, (u, m)|
+          # +"..." so the accumulator is not a frozen literal: Ruby 3.4 warns on
+          # the << below and Ruby 4.0 raises. This only surfaced once the block
+          # form of trace started running at all.
+          mem_cache.sort_by {|u, _m| u}.reduce(+"   update_dyngroups_cache\n") do |t, (u, m)|
             t << "      #{u} #{m.join(', ')}\n"
           end
         end
@@ -491,9 +499,13 @@ module LdapSync::Infectors::AuthSourceLdap
         trace msg, :level => level, :obj => user.login
       end
 
-      def trace(msg = nil, options = {}, &block)
-        return if trace_level == :silent || msg.nil?
-        if !running_rake?
+      # The block form (trace { expensive_string }) exists so a caller can skip
+      # building a debug dump that will be thrown away. It was unreachable: the
+      # nil-msg guard returned before block_given? was ever consulted, so
+      # update_dyngroups_cache!'s dump never printed at any trace level.
+      def trace(msg = nil, options = {})
+        return if trace_level == :silent || (msg.nil? && !block_given?)
+        unless running_rake?
           logger.error(block_given? ? yield : msg) if options[:level] == :error
           return
         end

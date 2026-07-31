@@ -15,7 +15,7 @@ forks, and is actively kept working on current Redmine.
 and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
 Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
-Current version: **2.9.0** — see [What's new](#whats-new-in-this-fork).
+Current version: **2.9.1** — see [What's new](#whats-new-in-this-fork).
 
 Features
 --------
@@ -42,6 +42,19 @@ Features
 
 What's new in this fork
 -----------------------
+
+**v2.9.1**
+
+* **A duplicate mail address is reported instead of crashing the run.** The
+  message naming the address's current owner looked the owner up with
+  `find_by_mail`, which can answer `nil` even when the address is taken, and the
+  error path then raised `NoMethodError` of its own.
+* **The block form of `trace` works.** It exists so a caller can skip building a
+  debug dump that gets thrown away; a guard on the first line meant it printed
+  nothing at any trace level, so the dynamic-groups cache dump was never seen.
+* One redundant LDAP round-trip removed from group synchronization when the
+  member-id attribute is empty, and a batch of inspection findings cleared —
+  dead code, unused parameters, repeated jQuery lookups.
 
 **v2.9.0**
 

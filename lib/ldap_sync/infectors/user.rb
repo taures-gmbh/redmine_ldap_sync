@@ -81,8 +81,13 @@ module LdapSync::Infectors::User
 
   module ClassMethods
     def try_to_login_with_ldap_sync(*args)
+      ::LdapSync::Hooks.synced_on_login_user_id = nil
       user = try_to_login_without_ldap_sync(*args)
       return user unless user.try(:sync_on_login?)
+
+      # Tell LdapSync::Hooks we already handled this login, so the
+      # controller_account_success_authentication_after hook does not bind twice.
+      ::LdapSync::Hooks.synced_on_login_user_id = user.id
 
       login, password = *args
       if user.new_record?

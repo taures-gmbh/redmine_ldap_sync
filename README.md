@@ -15,7 +15,7 @@ forks, and is actively kept working on current Redmine.
 and **7.0** on the official images — Rails 6.1 through 8.1, Ruby 3.2 through 4.0.
 Requires Redmine **5.0.0 or higher** (`requires_redmine`).
 
-Current version: **2.9.1** — see [What's new](#whats-new-in-this-fork).
+Current version: **2.10.0** – see [What's new](#whats-new-in-this-fork).
 
 Features
 --------
@@ -42,6 +42,20 @@ Features
 
 What's new in this fork
 -----------------------
+
+**v2.10.0**
+
+* **Sync on login now covers single sign-on.** The sync-on-login alias only ever
+  hooked `User.try_to_login!`, which an SSO plugin never calls, so an OIDC user's
+  fields and groups waited for the next scheduled run. A listener on
+  `controller_account_success_authentication_after` catches every login path
+  instead, without this plugin knowing about any particular SSO plugin.
+* **The sync runs in Sidekiq, not on the login request.** A real bind against the
+  directory measured around 480 ms, which would otherwise land on the login
+  itself. `LdapSyncUserWorker` does the work out of band, deduplicated per user,
+  so repeated logins cause a single bind, and the scheduled run stays the
+  backstop. Password logins are unchanged: `try_to_login!` still syncs inline and
+  marks the user so the listener does not bind a second time.
 
 **v2.9.1**
 
